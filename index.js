@@ -4,21 +4,9 @@ const _fs = require('fs');
 
 const label = (s) => {if (s==null || s.length==0) { return 'undefined';} else {return s}};
 
-
 const SPARQL = SparqlClient.SPARQL;
 const endpoint = 'http://dbpedia.org/sparql';
-
-// Get the leaderName(s) of the given city
-//const city = 'Vienna';
-//const query =
-  // SPARQL`PREFIX db: <http://dbpedia.org/resource/>
-  //        PREFIX dbpedia: <http://dbpedia.org/property/>
-  //        SELECT ?leaderName
-  //        FROM <http://dbpedia.org>
-  //        WHERE {
-  //          ${{db: city}} dbpedia:leaderName ?leaderName
-  //        }
-  //        LIMIT 10`;
+//const endpoint = 'http://34.255.72.0/veneto/sparql';
 
 const query =
   SPARQL `
@@ -49,7 +37,7 @@ const query =
         } `;
 
 
-const client = new SparqlClient(endpoint)
+const client = new SparqlClient(endpoint, {requestDefaults:{method:'GET'}})
   .register({db: 'http://dbpedia.org/resource/'})
   .register({dbpedia: 'http://dbpedia.org/property/'});
 
@@ -81,31 +69,31 @@ client.query(query)
 
     resultSet.results.bindings.forEach( (row) => {
         i++;
-        //console.log("## "+i);
-        //console.log(row);
+        console.log("## "+i);
+        console.log(row);
         var la='undefined';
         var lb='undefined';
         if (!_lh.isEmpty(row.class_a_label)) la = row.class_a_label.value;
         if (!_lh.isEmpty(row.class_b_label)) lb = row.class_b_label.value;
-        if (row.class_a.type=='uri') classes.push({id : nc++, uri : row.class_a.value, label : la , type:'Class'}); 
-        if (row.class_b.type=='uri') classes.push({id : nc++, uri : row.class_b.value, label : lb , type:'Class'}); 
+        if (row.class_a.type=='uri') classes.push({id : nc++, uri : row.class_a.value, label : la , type:'Class'});
+        if (row.class_b.type=='uri') classes.push({id : nc++, uri : row.class_b.value, label : lb , type:'Class'});
 
         var la='undefined';
         var lb='undefined';
         if (!_lh.isEmpty(row.prop_label)) la = row.prop_label.value;
         if (!_lh.isEmpty(row.type)) lb = row.type.value;
-        if (row.objprop.type=='uri') properties.push({id : np++, uri : row.objprop.value, label : la, type : lb, from: row.class_a.value, to: row.class_b.value }); 
+        if (row.objprop.type=='uri') properties.push({id : np++, uri : row.objprop.value, label : la, type : lb, from: row.class_a.value, to: row.class_b.value });
 
       }
     );
-    
+
     console.log("records read:"+i);
-    
+
     console.log("duplicated classes:"+classes.length+" ("+(nc-1)+")");
     //tolgo le ripetizioni (per uri)
     classes = _lh.uniqBy(classes, 'uri');
     console.log("classes:"+classes.length);
-    
+
     console.log("duplicated properties:"+properties.length+" ("+(np-1)+")");
     //tolgo le ripetizioni (per uri) NON CI DOVREBBERO ESSERE
     properties = _lh.uniqBy(properties, 'uri');
@@ -114,7 +102,7 @@ client.query(query)
     var nn = 1;
     classes.forEach ( (c) => {
         data = { id:nn++, weight: 30, type: 'node', label: c.label, uri:c.uri, class: 'Classe' };
-        var node = {data: data, group: 'nodes', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''}; 
+        var node = {data: data, group: 'nodes', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
         nodes.push (node);
         //console.log(node.data.uri)
       }
@@ -125,18 +113,18 @@ client.query(query)
     properties.forEach ( (p) => {
         //console.log(p.to + " => "+nodes.find(x => x.uri === p.to));
         data = { id:ne++, weight: 2, type: 'edge', label: p.label, uri:p.uri, class: p.type, source: nodes.find(x => x.data.uri === p.from).data.id, target: nodes.find(x => x.data.uri === p.to).data.id };
-        var edge = {data: data, group: 'edges', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''}; 
+        var edge = {data: data, group: 'edges', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
         edges.push (edge);
       }
     );
     //console.log("edges:"+edges.length);
 
-    
+
     let optObj={};
 
     _fs.readFile('options.json', 'utf-8',  (err, data) => {
       if (err) throw err;
-    
+
       var graphObj = {id: 1, name: 'nome', graph: [], options : {}}
       var graphVectorObj = { graphs: [] };
       optObj = JSON.parse(data);
@@ -147,13 +135,13 @@ client.query(query)
 
       //console.dir(graphVectorObj , {depth: 5});
 
-      _fs.writeFile('graph-db.json', JSON.stringify(graphVectorObj) , 'utf-8', (err) => {
+      _fs.writeFile('graph-db.json', JSON.stringify(graphVectorObj,null,2) , 'utf-8', (err) => {
           if (err) throw err;
           console.log('The file has been saved!');
       });
 
     });
-   
+
   })
   .catch(function (error) {
     // Oh noes! 🙀
