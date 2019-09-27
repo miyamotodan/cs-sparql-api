@@ -1,0 +1,61 @@
+{
+  "layout": "cola",
+  "styles": [
+    {
+      "selector": "node",
+      "style": {
+        "shape": "ellipse",
+        "background-color": "#222222",
+        "border-color": "#111111",
+        "border-width": 1,
+        "label": "data(label)",
+        "text-halign": "left",
+        "text-valign": "top",
+        "width": "20",
+        "height": "20"
+      }
+    },
+    {
+      "selector": "node[class=\"Classe\"]",
+      "style": {
+        "shape": "ellipse",
+        "background-color": "#ffaaff",
+        "border-color": "#aa0055",
+        "border-width": 3,
+        "label": "C",
+        "text-halign": "center",
+        "text-valign": "center",
+        "width": "data(weight)",
+        "height": "data(weight)"
+      }
+    },
+    {
+      "selector": "node:selected",
+      "style": {
+        "background-color": "#ffef96",
+        "border-color": "#ff0000",
+        "border-width": 5
+      }
+    },
+    {
+      "selector": "edge",
+      "style": {
+        "width": "data(weight)",
+        "line-color": "#808080",
+        "curve-style": "bezier",
+        "target-arrow-shape": "circle",
+        "target-arrow-color": "#808080"
+      }
+    },
+    {
+      "selector": "edge:selected",
+      "style": {
+        "width": "data(weight)",
+        "line-color": "#ff0000",
+        "curve-style": "bezier",
+        "target-arrow-shape": "circle",
+        "target-arrow-color": "#FF0000"
+      }
+    }
+  ]
+}

@@ -1,8 +1,10 @@
-var _lh = require('lodash');
+const SparqlClient = require('sparql-client-2');
+const _lh = require('lodash');
+const _fs = require('fs');
 
 const label = (s) => {if (s==null || s.length==0) { return 'undefined';} else {return s}};
 
-const SparqlClient = require('sparql-client-2');
+
 const SPARQL = SparqlClient.SPARQL;
 const endpoint = 'http://dbpedia.org/sparql';
 
@@ -76,8 +78,9 @@ client.query(query)
     var i = 0;
     var nc = 1;
     var np = 1;
+
     resultSet.results.bindings.forEach( (row) => {
-        i++
+        i++;
         //console.log("## "+i);
         //console.log(row);
         var la='undefined';
@@ -91,17 +94,19 @@ client.query(query)
         var lb='undefined';
         if (!_lh.isEmpty(row.prop_label)) la = row.prop_label.value;
         if (!_lh.isEmpty(row.type)) lb = row.type.value;
-        if (row.objprop.type=='uri') properties.push({id : nc++, uri : row.objprop.value, label : la, type : lb, from: row.class_a.value, to: row.class_b.value }); 
+        if (row.objprop.type=='uri') properties.push({id : np++, uri : row.objprop.value, label : la, type : lb, from: row.class_a.value, to: row.class_b.value }); 
 
       }
     );
     
-    console.log("duplicated classes:"+classes.length);
+    console.log("records read:"+i);
+    
+    console.log("duplicated classes:"+classes.length+" ("+(nc-1)+")");
     //tolgo le ripetizioni (per uri)
     classes = _lh.uniqBy(classes, 'uri');
     console.log("classes:"+classes.length);
     
-    console.log("duplicated properties:"+properties.length);
+    console.log("duplicated properties:"+properties.length+" ("+(np-1)+")");
     //tolgo le ripetizioni (per uri) NON CI DOVREBBERO ESSERE
     properties = _lh.uniqBy(properties, 'uri');
     console.log("properties:"+properties.length);
@@ -111,19 +116,44 @@ client.query(query)
         data = { id:nn++, weight: 30, type: 'node', label: c.label, uri:c.uri, class: 'Classe' };
         var node = {data: data, group: 'nodes', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''}; 
         nodes.push (node);
+        //console.log(node.data.uri)
       }
     );
-    console.log("nodes:"+nodes.length);
+    //console.log("nodes:"+nodes.length);
 
     var ne = 1;
     properties.forEach ( (p) => {
-        data = { id:ne++, weight: 2, type: 'edge', label: p.label, uri:p.uri, class: p.type, source: 0, target: 0 };
+        //console.log(p.to + " => "+nodes.find(x => x.uri === p.to));
+        data = { id:ne++, weight: 2, type: 'edge', label: p.label, uri:p.uri, class: p.type, source: nodes.find(x => x.data.uri === p.from).data.id, target: nodes.find(x => x.data.uri === p.to).data.id };
         var edge = {data: data, group: 'edges', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''}; 
         edges.push (edge);
       }
     );
-    console.log("edges:"+edges.length);
+    //console.log("edges:"+edges.length);
 
+    
+    let optObj={};
+
+    _fs.readFile('options.json', 'utf-8',  (err, data) => {
+      if (err) throw err;
+    
+      var graphObj = {id: 1, name: 'nome', graph: [], options : {}}
+      var graphVectorObj = { graphs: [] };
+      optObj = JSON.parse(data);
+
+      graphObj.graph = [...nodes, ...edges];
+      graphObj.options = optObj;
+      graphVectorObj.graphs.push(graphObj);
+
+      //console.dir(graphVectorObj , {depth: 5});
+
+      _fs.writeFile('graph-db.json', JSON.stringify(graphVectorObj) , 'utf-8', (err) => {
+          if (err) throw err;
+          console.log('The file has been saved!');
+      });
+
+    });
+   
   })
   .catch(function (error) {
     // Oh noes! 🙀
