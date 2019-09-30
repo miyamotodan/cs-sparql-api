@@ -10,6 +10,6 @@
   "license": "ISC",
   "dependencies": {
     "lodash": "^4.17.15",
-    "sparql-client-2": "^0.6.3"
+    "@comunica/actor-init-sparql": "^1.8.0"
   }
 }
