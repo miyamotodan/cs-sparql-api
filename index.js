@@ -35,7 +35,7 @@ async function handleData() {
  #              BIND("AnnotationProperty" AS ?type)
  #           }
         } 
-        #limit 1000       
+        limit 100       
   `;
 
 
@@ -50,10 +50,19 @@ async function handleData() {
 
   var tot = 0;
 
+  //PROVARE!!!!!
+  function fillValue(record, data, field){
+      let o = data.get('?'+field);
+      cmd = eval('record.'+label+'.value = o.value');
+      if (o.language) eval('record.'+label+'.xmllang=o.language');
+      eval('record.'+label+'.type="literal"');
+  }
+
   result.bindingsStream.on('data', data => {
 
     tot++;
-    //console.dir(data.toObject(), {depth:5});
+    //if (data.get('?class_a').value==="http://dbpedia.org/ontology/Person") console.dir(data.get('?class_a_label').value, {depth:5});
+    //if (data.get('?class_b').value==="http://dbpedia.org/ontology/Person") console.dir(data.get('?class_b_label').value, {depth:5});
 
     var i = 0;
 
@@ -80,7 +89,7 @@ async function handleData() {
       if (o.language) record.prop_label.xmllang=o.language;
       record.prop_label.type="literal";
       i++ 
-    } else record.prop_label = "";
+    } else record.prop_label.value = "";
     if (data.get('?class_a')) {
       let o = data.get('?class_a'); 
       record.class_a.value = o.value;
@@ -92,33 +101,32 @@ async function handleData() {
       record.class_b.value = o.value; 
       record.class_b.type="uri"; 
       i++ 
-    } else record.class_b = "";
+    } else record.class_b.value = "";
     if (data.get('?type')) { 
       let o = data.get('?type');
       record.type.value = o.value; 
       if (o.language) record.type.xmllang=o.language;
       record.type.type="literal";
       i++ 
-    } else record.type = "";
+    } else record.type.value = "";
     if (data.get('?class_a_label')) {
       let o =  data.get('?class_a_label');
       record.class_a_label.value = o.value;
       if (o.language) record.class_a_label.xmllang=o.language; 
       record.class_a_label.type="literal";
       i++ 
-    } else record.class_a_label = "";
+    } else record.class_a_label.value = "";
     if (data.get('?class_b_label')) {
       let o = data.get('?class_b_label'); 
-      record.class_b_label = o.value;
+      record.class_b_label.value = o.value;
       if (o.language) record.class_b_label.xmllang=o.language; 
       record.class_b_label.type="literal";
       i++ 
-    } else record.class_b_label = "";
+    } else record.class_b_label.value = "";
 
-    console.log("(" + tot + ")".concat("#".repeat(i)));
-
+    console.log("(" + tot + ")".concat("#".repeat(i)).concat(""+i));
     results.push(record);
-
+    
   });
   return new Promise(resolve => {
     result.bindingsStream.on('end', () => {
@@ -157,8 +165,8 @@ handleData().then(
  
     data.forEach( (row) => {
         i++;
-        console.log("## "+i);
-        console.log(row);
+        //console.log("## "+i);
+        //console.log(row);
         var la='undefined';
         var lb='undefined';
         if (!_lh.isEmpty(row.class_a_label)) la = row.class_a_label.value;
@@ -189,8 +197,9 @@ handleData().then(
  
     var nn = 1;
     classes.forEach ( (c) => {
+        position = { x: 0, y: 0 };
         data = { id:nn++, weight: 30, type: 'node', label: c.label, uri:c.uri, class: 'Classe' };
-        var node = {data: data, group: 'nodes', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
+        var node = {data: data, position: position, group: 'nodes', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
         nodes.push (node);
         //console.log(node.data.uri)
       }
