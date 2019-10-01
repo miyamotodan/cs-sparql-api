@@ -13,8 +13,9 @@ async function handleData() {
   PREFIX db: <http://dbpedia.org/resource/>
   PREFIX dbpedia: <http://dbpedia.org/property/>
   select distinct ?class_a ?objprop ?class_b ?class_a_label ?prop_label ?class_b_label ?type
-  FROM    <http://dbpedia.org>
+  #FROM    <http://dbpedia.org>
   where {
+    GRAPH <http://34.255.72.0/context/veneto/server/onto> {
            {
                ?objprop a owl:ObjectProperty .
                ?objprop rdfs:domain ?class_a .
@@ -34,6 +35,7 @@ async function handleData() {
  #              OPTIONAL { ?class_b rdfs:label ?class_b_label FILTER (lang(?class_b_label) = 'en') }
  #              BIND("AnnotationProperty" AS ?type)
  #           }
+        }
         } 
         #limit 100       
   `;
@@ -41,8 +43,8 @@ async function handleData() {
 
   const sources = [
     // { type: "sparql", value: "http://192.168.178.114:9999/blazegraph/sparql" }
-    // { type: "sparql", value: "http://34.255.72.0/veneto/sparql" }
-     { type: "sparql", value: "http://dbpedia.org/sparql" }
+     { type: "sparql", value: "http://34.255.72.0/veneto/sparql" }
+    //{ type: "sparql", value: "http://dbpedia.org/sparql" }
     // { type: "hypermedia", value: "http://fragments.dbpedia.org/2016-04/en" }
   ];
   const result = await engine.query(query, { sources });
@@ -198,7 +200,7 @@ handleData().then(
     position = { x: 0, y: 0 };
     var nn = 1;
     classes.forEach ( (c) => {
-        data = { id: ""+nn++, weight: 30, type: 'node', label: c.label, uri:c.uri, class: 'Classe' };
+        data = { id: "n"+nn++, weight: 30, type: 'node', label: c.label, uri:c.uri, class: 'Classe' };
         var node = {data: data, position: position, group: 'nodes', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
         nodes.push (node);
         //console.log(node.data.uri)
@@ -209,7 +211,7 @@ handleData().then(
     var ne = 1;
     properties.forEach ( (p) => {
         //console.log(p.to + " => "+nodes.find(x => x.uri === p.to));
-        data = { id: ""+ne++, weight: 2, type: 'edge', label: p.label, uri:p.uri, class: p.type, source: nodes.find(x => x.data.uri === p.from).data.id, target: nodes.find(x => x.data.uri === p.to).data.id };
+        data = { id: "e"+ne++, weight: 2, type: 'edge', label: p.label, uri:p.uri, class: p.type, source: nodes.find(x => x.data.uri === p.from).data.id, target: nodes.find(x => x.data.uri === p.to).data.id };
         var edge = {data: data, position: position, group: 'edges', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
         edges.push (edge);
       }
