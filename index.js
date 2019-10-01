@@ -35,7 +35,7 @@ async function handleData() {
  #              BIND("AnnotationProperty" AS ?type)
  #           }
         } 
-        limit 100       
+        #limit 100       
   `;
 
 
@@ -195,10 +195,10 @@ handleData().then(
     properties = _lh.uniqBy(properties, 'uri');
     console.log("properties:"+properties.length);
  
+    position = { x: 0, y: 0 };
     var nn = 1;
     classes.forEach ( (c) => {
-        position = { x: 0, y: 0 };
-        data = { id:nn++, weight: 30, type: 'node', label: c.label, uri:c.uri, class: 'Classe' };
+        data = { id: ""+nn++, weight: 30, type: 'node', label: c.label, uri:c.uri, class: 'Classe' };
         var node = {data: data, position: position, group: 'nodes', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
         nodes.push (node);
         //console.log(node.data.uri)
@@ -209,8 +209,8 @@ handleData().then(
     var ne = 1;
     properties.forEach ( (p) => {
         //console.log(p.to + " => "+nodes.find(x => x.uri === p.to));
-        data = { id:ne++, weight: 2, type: 'edge', label: p.label, uri:p.uri, class: p.type, source: nodes.find(x => x.data.uri === p.from).data.id, target: nodes.find(x => x.data.uri === p.to).data.id };
-        var edge = {data: data, group: 'edges', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
+        data = { id: ""+ne++, weight: 2, type: 'edge', label: p.label, uri:p.uri, class: p.type, source: nodes.find(x => x.data.uri === p.from).data.id, target: nodes.find(x => x.data.uri === p.to).data.id };
+        var edge = {data: data, position: position, group: 'edges', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
         edges.push (edge);
       }
     );
