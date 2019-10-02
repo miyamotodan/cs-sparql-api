@@ -8,66 +8,42 @@ const engine = newEngine();
 
 async function handleData() {
 
-  const query = `
-  
-  PREFIX db: <http://dbpedia.org/resource/>
-  PREFIX dbpedia: <http://dbpedia.org/property/>
-  select distinct ?class_a ?objprop ?class_b ?class_a_label ?prop_label ?class_b_label ?type
-  #FROM    <http://dbpedia.org>
-  where {
-    GRAPH <http://34.255.72.0/context/veneto/server/onto> {
-           {
-               ?objprop a owl:ObjectProperty .
-               ?objprop rdfs:domain ?class_a .
-               ?objprop rdfs:range ?class_b .
-               OPTIONAL { ?objprop rdfs:label ?prop_label FILTER (lang(?prop_label) = 'en') }.
-               OPTIONAL { ?class_a rdfs:label ?class_a_label FILTER (lang(?class_a_label) = 'en') } .
-               OPTIONAL { ?class_b rdfs:label ?class_b_label FILTER (lang(?class_b_label) = 'en') }
-               BIND("ObjectProperty" AS ?type)
-           }
- #        UNION
- #          {
- #              ?objprop a owl:AnnotationProperty .
- #              ?objprop rdfs:domain ?class_a .
- #              ?objprop rdfs:range ?class_b .
- #              OPTIONAL { ?objprop rdfs:label ?prop_label FILTER (lang(?prop_label) = 'en') }.
- #              OPTIONAL { ?class_a rdfs:label ?class_a_label FILTER (lang(?class_a_label) = 'en') } .
- #              OPTIONAL { ?class_b rdfs:label ?class_b_label FILTER (lang(?class_b_label) = 'en') }
- #              BIND("AnnotationProperty" AS ?type)
- #           }
-        }
-        } 
-        #limit 100       
-  `;
-
+  //carico la query SPARQL
+  var query = '';
+  try {
+      query = _fs.readFileSync('veneto.sparql', 'utf8');
+  } catch(e) {
+      console.log('Error reading query:', e.stack);
+  }
 
   const sources = [
     // { type: "sparql", value: "http://192.168.178.114:9999/blazegraph/sparql" }
      { type: "sparql", value: "http://34.255.72.0/veneto/sparql" }
-    //{ type: "sparql", value: "http://dbpedia.org/sparql" }
+    // { type: "sparql", value: "http://dbpedia.org/sparql" }
     // { type: "hypermedia", value: "http://fragments.dbpedia.org/2016-04/en" }
   ];
+
+
   const result = await engine.query(query, { sources });
   const results = [];
-
   var tot = 0;
 
-  //PROVARE!!!!!
-  function fillValue(record, data, field){
+  function fillLiteralValue(record, data, field){
       let o = data.get('?'+field);
-      cmd = eval('record.'+label+'.value = o.value');
-      if (o.language) eval('record.'+label+'.xmllang=o.language');
-      eval('record.'+label+'.type="literal"');
+      eval('record.'+field+'.value = o.value');
+      if (o.language) eval('record.'+field+'.xmllang=o.language');
+      eval('record.'+field+'.type="literal"');
+  }
+
+  function fillUriValue(record, data, field) {
+      let o = data.get('?'+field);
+      eval('record.'+field+'.value = o.value'); 
+      eval('record.'+field+'.type = "uri"'); 
   }
 
   result.bindingsStream.on('data', data => {
-
     tot++;
-    //if (data.get('?class_a').value==="http://dbpedia.org/ontology/Person") console.dir(data.get('?class_a_label').value, {depth:5});
-    //if (data.get('?class_b').value==="http://dbpedia.org/ontology/Person") console.dir(data.get('?class_b_label').value, {depth:5});
-
     var i = 0;
-
     //costruisco una struttura intermedia 
     var record = {
       "class_a": { "type": "", "value": "", "xmllang": "" },
@@ -79,52 +55,13 @@ async function handleData() {
       "type": { "type": "", "value": "", "xmllang": "" }
     };
 
-    if (data.get('?objprop')) {
-      let o = data.get('?objprop');
-      record.objprop.value = o.value; 
-      record.objprop.type = "uri"; 
-      i++ 
-    } else objprop.value = "";
-    if (data.get('?prop_label')) { 
-      let o = data.get('?prop_label');
-      record.prop_label.value = o.value;
-      if (o.language) record.prop_label.xmllang=o.language;
-      record.prop_label.type="literal";
-      i++ 
-    } else record.prop_label.value = "";
-    if (data.get('?class_a')) {
-      let o = data.get('?class_a'); 
-      record.class_a.value = o.value;
-      record.class_a.type="uri"; 
-      i++ 
-    } else record.class_a.value = "";
-    if (data.get('?class_b')) {
-      let o =  data.get('?class_b');
-      record.class_b.value = o.value; 
-      record.class_b.type="uri"; 
-      i++ 
-    } else record.class_b.value = "";
-    if (data.get('?type')) { 
-      let o = data.get('?type');
-      record.type.value = o.value; 
-      if (o.language) record.type.xmllang=o.language;
-      record.type.type="literal";
-      i++ 
-    } else record.type.value = "";
-    if (data.get('?class_a_label')) {
-      let o =  data.get('?class_a_label');
-      record.class_a_label.value = o.value;
-      if (o.language) record.class_a_label.xmllang=o.language; 
-      record.class_a_label.type="literal";
-      i++ 
-    } else record.class_a_label.value = "";
-    if (data.get('?class_b_label')) {
-      let o = data.get('?class_b_label'); 
-      record.class_b_label.value = o.value;
-      if (o.language) record.class_b_label.xmllang=o.language; 
-      record.class_b_label.type="literal";
-      i++ 
-    } else record.class_b_label.value = "";
+    if (data.get('?objprop')) { fillUriValue(record,data,'objprop'); i++ } else objprop.value = "";
+    if (data.get('?prop_label')) { fillLiteralValue(record,data,'prop_label'); i++ } else record.prop_label.value = "";
+    if (data.get('?class_a')) { fillUriValue(record,data,'class_a');  i++ } else record.class_a.value = "";
+    if (data.get('?class_b')) { fillUriValue(record,data,'class_b');  i++ } else record.class_b.value = "";
+    if (data.get('?type')) { fillLiteralValue(record,data,'type'); i++ } else record.type.value = "";
+    if (data.get('?class_a_label')) { fillLiteralValue(record,data,'class_a_label'); i++ } else record.class_a_label.value = "";
+    if (data.get('?class_b_label')) { fillLiteralValue(record,data,'class_b_label'); i++ } else record.class_b_label.value = "";
 
     console.log("(" + tot + ")".concat("#".repeat(i)).concat(""+i));
     results.push(record);
@@ -135,10 +72,11 @@ async function handleData() {
       resolve(results);
     })
   });
-}
+} //END async function handleData() 
 
 
 console.log('start');
+
 handleData().then(
   (data) => {
 
