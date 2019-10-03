@@ -63,7 +63,8 @@ async function handleData() {
     if (data.get('?class_a_label')) { fillLiteralValue(record,data,'class_a_label'); i++ } else record.class_a_label.value = "";
     if (data.get('?class_b_label')) { fillLiteralValue(record,data,'class_b_label'); i++ } else record.class_b_label.value = "";
 
-    console.log("(" + tot + ")".concat("#".repeat(i)).concat(""+i));
+    console.dir(data, {depth:5});
+    //console.log("(" + tot + ")".concat("#".repeat(i)).concat(""+i));
     results.push(record);
     
   });
@@ -81,82 +82,33 @@ handleData().then(
   (data) => {
 
     console.log("QUERY OK");
-
-    //console.dir(data, {depth:5});
-
-    // RISULTATO
-    // { "class_a": { "type": "uri", "value": "http://dbpedia.org/ontology/Person" },
-    //   "objprop": { "type": "uri", "value": "http://dbpedia.org/ontology/copilote" },
-    //   "class_b": { "type": "uri", "value": "http://dbpedia.org/ontology/Person" },
-    //   "class_a_label": { "type": "literal", "xmllang": "en", "value": "person" },
-    //   "prop_label": { "type": "literal", "xmllang": "en", "value": "copilote" },
-    //   "class_b_label": { "type": "literal", "xmllang": "en", "value": "person" },
-    //   "type": { "type": "literal", "value": "ObjectProperty" }
-    // }
-  
-    var classes = [];
-    var properties = [];
-    var nodes = [];
-    var edges = [];
- 
-    var i = 0;
     var nc = 1;
     var np = 1;
  
-    data.forEach( (row) => {
-        i++;
-        //console.log("## "+i);
-        //console.log(row);
-        var la='undefined';
-        var lb='undefined';
-        if (!_lh.isEmpty(row.class_a_label)) la = row.class_a_label.value;
-        if (!_lh.isEmpty(row.class_b_label)) lb = row.class_b_label.value;
-        if (row.class_a.type=='uri') classes.push({id : nc++, uri : row.class_a.value, label : la , type:'Class'});
-        if (row.class_b.type=='uri') classes.push({id : nc++, uri : row.class_b.value, label : lb , type:'Class'});
- 
-        var la='undefined';
-        var lb='undefined';
-        if (!_lh.isEmpty(row.prop_label)) la = row.prop_label.value;
-        if (!_lh.isEmpty(row.type)) lb = row.type.value;
-        if (row.objprop.type=='uri') properties.push({id : np++, uri : row.objprop.value, label : la, type : lb, from: row.class_a.value, to: row.class_b.value });
- 
-      }
-    );
- 
-    console.log("records read:"+i);
- 
-    console.log("duplicated classes:"+classes.length+" ("+(nc-1)+")");
-    //tolgo le ripetizioni (per uri)
-    classes = _lh.uniqBy(classes, 'uri');
-    console.log("classes:"+classes.length);
- 
-    console.log("duplicated properties:"+properties.length+" ("+(np-1)+")");
-    //tolgo le ripetizioni (per uri) NON CI DOVREBBERO ESSERE
-    properties = _lh.uniqBy(properties, 'uri');
-    console.log("properties:"+properties.length);
- 
-    position = { x: 0, y: 0 };
-    var nn = 1;
-    classes.forEach ( (c) => {
-        data = { id: "n"+nn++, weight: 30, type: 'node', label: c.label, uri:c.uri, class: 'Classe' };
-        var node = {data: data, position: position, group: 'nodes', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
-        nodes.push (node);
-        //console.log(node.data.uri)
-      }
-    );
-    //console.log("nodes:"+nodes.length);
- 
-    var ne = 1;
-    properties.forEach ( (p) => {
-        //console.log(p.to + " => "+nodes.find(x => x.uri === p.to));
-        data = { id: "e"+ne++, weight: 2, type: 'edge', label: p.label, uri:p.uri, class: p.type, source: nodes.find(x => x.data.uri === p.from).data.id, target: nodes.find(x => x.data.uri === p.to).data.id };
-        var edge = {data: data, position: position, group: 'edges', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
-        edges.push (edge);
-      }
-    );
-    //console.log("edges:"+edges.length);
- 
- 
+    p = { x: 0, y: 0 };  
+    ca = _lh.map(data, (o) => { return {id : nc++, uri : o.class_a.value, label : o.class_a_label.value , type:'Class'} });
+    cb = _lh.map(data, (o) => { return {id : nc++, uri : o.class_b.value, label : o.class_b_label.value , type:'Class'} });
+    //unisco lasse_a e classe_b e tolgo i doppioni
+    ct = _lh.uniqBy(_lh.concat(ca,cb),'uri');
+    nt = _lh.map(ct, (o) => {
+      d = { id: "n"+o.id, weight: 30, type: 'node', label: o.label, uri:o.uri, class: 'Classe' };
+      return {data: d, position: p, group: 'nodes', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
+    });
+    //console.dir(nt,{depth:3});
+    
+    pp = _lh.map(data, (o) => { return {id : np++, uri : o.objprop.value, label : o.prop_label.value, type : o.type.value, from: o.class_a.value, to: o.class_b.value } });
+    // verificare l'unicità... potrebbe non essere corretto 
+    pp = _lh.uniqBy(pp,'uri');
+    pt = _lh.map(pp, (o) => {
+      d = { id: "e"+o.id, weight: 2, type: 'edge', label: o.label, uri:o.uri, class: o.type, source: nt.find(x => x.data.uri === o.from).data.id, target: nt.find(x => x.data.uri === o.to).data.id };
+      return {data: d, position: p, group: 'edges', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
+    });
+    
+    //console.dir(pt,{depth:3});
+    
+   
+    //SALVO SU FILE JSON
+
     let optObj={};
  
     _fs.readFile('options.json', 'utf-8',  (err, data) => {
@@ -166,7 +118,8 @@ handleData().then(
       var graphVectorObj = { graphs: [] };
       optObj = JSON.parse(data);
  
-      graphObj.graph = [...nodes, ...edges];
+      //graphObj.graph = [...nodes, ...edges];
+      graphObj.graph = [...nt, ...pt];
       graphObj.options = optObj;
       graphVectorObj.graphs.push(graphObj);
  
