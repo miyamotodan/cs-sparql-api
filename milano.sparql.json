@@ -11,7 +11,7 @@
       "value": [
         "select distinct ?class_a ?objprop ?class_b ?class_a_label ?prop_label ?class_b_label ?type ",
         "where { ",
-        "GRAPH <http://10.63.17.34:8890/schemas/ontomi#> { ",
+        "#GRAPH <http://10.63.17.34:8890/schemas/ontomi#> { ",
         "?objprop a owl:ObjectProperty . ",
         "?objprop rdfs:domain ?class_a . ",
         "?objprop rdfs:range ?class_b . ",
@@ -19,7 +19,7 @@
         "OPTIONAL { ?class_a rdfs:label ?class_a_label } . ",
         "OPTIONAL { ?class_b rdfs:label ?class_b_label } ",
         "BIND('ObjectProperty' AS ?type) ",
-        "} }"
+        "} #}"
       ]
     }
   ]

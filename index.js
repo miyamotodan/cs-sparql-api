@@ -106,6 +106,9 @@ handleData().then(
       return {data: d, position: p, group: 'nodes', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
     }
 
+    //TODO
+    function mapToEdge() { }
+
     console.log("QUERY OK");
     var nc = 1;
     var np = 1;
@@ -113,34 +116,46 @@ handleData().then(
     p = { x: 0, y: 0 };
     ca = _lh.map(data, (o) => mapToNode(o,nc++, 'class_a', 'class_a_label')); 
     cb = _lh.map(data, (o) => mapToNode(o,nc++, 'class_b', 'class_b_label')); 
-    /* 
-    cb = _lh.map(data, (o) => { 
-      d = {
-        id: "n" + (nc++),
-        weight: 30,
-        type: 'node',
-        label: o.class_b_label.value,
-        uri: o.class_b.value,
-        class: o.class_b.type==='uri'?'Class':'_blank'
-      };
-      return {data: d, position: p, group: 'nodes', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
-    });
-    */
 
     //unisco lasse_a e classe_b e tolgo i doppioni
     nt = _lh.uniqBy(_lh.concat(ca,cb),'data.uri');
-
-    /*
-    ca = _lh.map(data, (o) => { return {id : nc++, uri : o.class_a.value, label : o.class_a_label.value , type:'Class'} });
-    cb = _lh.map(data, (o) => { return {id : nc++, uri : o.class_b.value, label : o.class_b_label.value , type:'Class'} });
-    //unisco lasse_a e classe_b e tolgo i doppioni
-    ct = _lh.uniqBy(_lh.concat(ca,cb),'uri');
-    nt = _lh.map(ct, (o) => {
-      d = { id: "n"+o.id, weight: 30, type: 'node', label: o.label, uri:o.uri, class: 'Classe' };
-      return {data: d, position: p, group: 'nodes', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
-    });
-    */
     //console.dir(nt,{depth:3});
+
+    //ESPERIMENTO SULLA CREAZIONE DI NODI AGGIUNTIVI PER CREARE COMPOUND
+          function sharedStart(array){
+            var A= array, a1= A[0].data.uri, a2= A[A.length-1].data.uri, L= a1.length, i= 0;
+            while(i<L && a1.charAt(i)=== a2.charAt(i)) i++;
+            return a1.substring(0, i);
+          }
+
+          cc = [];
+          nc = 1;
+          //inserisco il primo compound
+          cc.push({ group: 'nodes', data : { id: "c" + nc++, type: "node", class : 'compound'} }); 
+
+          var slicer=0;
+          sorted_nt = _lh.sortBy(nt, ["data.uri"]); 
+          sorted_nt.forEach((element,index,array) => {
+            if(index>=1) {
+              ss = sharedStart(array.slice(slicer,index));
+              if (ss!=='http://' || ss.length==0) element.data.parent = "c" + (nc-1);
+              else {
+                //creo un nuovo compound
+                cc.push({ group: 'nodes', data : { id: "c" + nc++, type: "node", class : 'compound'} }); 
+                //aggiungo l'elemento corrente al compound creato
+                element.data.parent = "c" + (nc-1);
+                slicer = index;
+              }
+              //console.log(index + ":" +element.data.uri+" => "+ss);
+            } else {
+              //associo il primo al primo compound
+              element.data.parent = "c" + (nc-1);
+            }
+          });
+
+          //console.dir(cc, {depth:3});
+          //console.dir(sorted_nt, {depth:6});
+    //==================================================================
 
     pp = _lh.map(data, (o) => { return {id : np++, uri : o.objprop.value, label : o.prop_label.value, type : o.type.value, from: o.class_a.value, to: o.class_b.value } });
     // verificare l'unicità... potrebbe non essere corretto
@@ -165,7 +180,7 @@ handleData().then(
       optObj = JSON.parse(data);
 
       //graphObj.graph = [...nodes, ...edges];
-      graphObj.graph = [...nt, ...pt];
+      graphObj.graph = [...sorted_nt, ...pt, ...cc];
       graphObj.options = optObj;
       graphVectorObj.graphs.push(graphObj);
 
