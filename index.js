@@ -10,19 +10,23 @@ async function handleData() {
 
   //carico la query SPARQL
   var query = '';
+  var sources = [];
   try {
-      query = _fs.readFileSync('veneto.sparql', 'utf8');
+      objQuery =  JSON.parse( _fs.readFileSync('dbpedia.sparql.json', 'utf8') );
+      query = objQuery.query.join("\n");
+      sources = objQuery.sources;
+      console.log(query);
+      console.dir(sources, {depth:3});
   } catch(e) {
       console.log('Error reading query:', e.stack);
   }
 
-  const sources = [
-    // { type: "sparql", value: "http://192.168.178.114:9999/blazegraph/sparql" }
+ /* SOURCES
+     { type: "sparql", value: "http://192.168.178.114:9999/blazegraph/sparql" }
      { type: "sparql", value: "http://34.255.72.0/veneto/sparql" }
-    // { type: "sparql", value: "http://dbpedia.org/sparql" }
-    // { type: "hypermedia", value: "http://fragments.dbpedia.org/2016-04/en" }
-  ];
-
+     { type: "sparql", value: "http://dbpedia.org/sparql" }
+     { type: "hypermedia", value: "http://fragments.dbpedia.org/2016-04/en" }
+*/
 
   const result = await engine.query(query, { sources });
   const results = [];
@@ -37,14 +41,14 @@ async function handleData() {
 
   function fillUriValue(record, data, field) {
       let o = data.get('?'+field);
-      eval('record.'+field+'.value = o.value'); 
-      eval('record.'+field+'.type = "uri"'); 
+      eval('record.'+field+'.value = o.value');
+      eval('record.'+field+'.type = "uri"');
   }
 
   result.bindingsStream.on('data', data => {
     tot++;
     var i = 0;
-    //costruisco una struttura intermedia 
+    //costruisco una struttura intermedia
     var record = {
       "class_a": { "type": "", "value": "", "xmllang": "" },
       "objprop": { "type": "", "value": "", "xmllang": "" },
@@ -66,14 +70,14 @@ async function handleData() {
     console.dir(data, {depth:5});
     //console.log("(" + tot + ")".concat("#".repeat(i)).concat(""+i));
     results.push(record);
-    
+
   });
   return new Promise(resolve => {
     result.bindingsStream.on('end', () => {
       resolve(results);
     })
   });
-} //END async function handleData() 
+} //END async function handleData()
 
 
 console.log('start');
@@ -84,8 +88,8 @@ handleData().then(
     console.log("QUERY OK");
     var nc = 1;
     var np = 1;
- 
-    p = { x: 0, y: 0 };  
+
+    p = { x: 0, y: 0 };
     ca = _lh.map(data, (o) => { return {id : nc++, uri : o.class_a.value, label : o.class_a_label.value , type:'Class'} });
     cb = _lh.map(data, (o) => { return {id : nc++, uri : o.class_b.value, label : o.class_b_label.value , type:'Class'} });
     //unisco lasse_a e classe_b e tolgo i doppioni
@@ -95,41 +99,41 @@ handleData().then(
       return {data: d, position: p, group: 'nodes', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
     });
     //console.dir(nt,{depth:3});
-    
+
     pp = _lh.map(data, (o) => { return {id : np++, uri : o.objprop.value, label : o.prop_label.value, type : o.type.value, from: o.class_a.value, to: o.class_b.value } });
-    // verificare l'unicità... potrebbe non essere corretto 
+    // verificare l'unicità... potrebbe non essere corretto
     pp = _lh.uniqBy(pp,'uri');
     pt = _lh.map(pp, (o) => {
       d = { id: "e"+o.id, weight: 2, type: 'edge', label: o.label, uri:o.uri, class: o.type, source: nt.find(x => x.data.uri === o.from).data.id, target: nt.find(x => x.data.uri === o.to).data.id };
       return {data: d, position: p, group: 'edges', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
     });
-    
+
     //console.dir(pt,{depth:3});
-    
-   
+
+
     //SALVO SU FILE JSON
 
     let optObj={};
- 
+
     _fs.readFile('options.json', 'utf-8',  (err, data) => {
       if (err) throw err;
- 
+
       var graphObj = {id: 1, name: 'nome', graph: [], options : {}}
       var graphVectorObj = { graphs: [] };
       optObj = JSON.parse(data);
- 
+
       //graphObj.graph = [...nodes, ...edges];
       graphObj.graph = [...nt, ...pt];
       graphObj.options = optObj;
       graphVectorObj.graphs.push(graphObj);
- 
+
       //console.dir(graphVectorObj , {depth: 5});
- 
+
       _fs.writeFile('graph-db.json', JSON.stringify(graphVectorObj,null,2) , 'utf-8', (err) => {
           if (err) throw err;
           console.log('The file has been saved!');
       });
- 
+
     });
 
 
