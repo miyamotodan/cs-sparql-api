@@ -12,11 +12,16 @@ async function handleData() {
   var query = '';
   var sources = [];
   try {
-      objQuery =  JSON.parse( _fs.readFileSync('dbpedia.sparql.json', 'utf8') );
-      query = objQuery.query.join("\n");
+      objQuery =  JSON.parse( _fs.readFileSync('milano.sparql.json', 'utf8') );
+      //prendo la query per le classi e le object property
+      query = objQuery.query.find(x => x.name === 'classes').value.join("\n");
       sources = objQuery.sources;
-      console.log(query);
+
       console.dir(sources, {depth:3});
+      console.log('-------------------------------------');
+      console.log(query);
+      console.log('-------------------------------------');
+      
   } catch(e) {
       console.log('Error reading query:', e.stack);
   }
@@ -42,13 +47,17 @@ async function handleData() {
   function fillUriValue(record, data, field) {
       let o = data.get('?'+field);
       eval('record.'+field+'.value = o.value');
-      eval('record.'+field+'.type = "uri"');
+      //console.dir(data,{depth:4});
+      if (o.constructor.name === 'NamedNode')
+        eval('record.'+field+'.type = "uri"');
+      else  
+        eval('record.'+field+'.type = "blank"');
   }
 
   result.bindingsStream.on('data', data => {
     tot++;
     var i = 0;
-    //costruisco una struttura intermedia
+    //costruisco una struttura intermedia come se fosse ritornata da una select SPARQL
     var record = {
       "class_a": { "type": "", "value": "", "xmllang": "" },
       "objprop": { "type": "", "value": "", "xmllang": "" },
@@ -67,7 +76,7 @@ async function handleData() {
     if (data.get('?class_a_label')) { fillLiteralValue(record,data,'class_a_label'); i++ } else record.class_a_label.value = "";
     if (data.get('?class_b_label')) { fillLiteralValue(record,data,'class_b_label'); i++ } else record.class_b_label.value = "";
 
-    console.dir(data, {depth:5});
+    //onsole.dir(data, {depth:6});
     //console.log("(" + tot + ")".concat("#".repeat(i)).concat(""+i));
     results.push(record);
 
@@ -85,11 +94,43 @@ console.log('start');
 handleData().then(
   (data) => {
 
+    function mapToNode (o, nc, cl, lb) {
+      d = {
+        id: "n" + nc,
+        weight: 30,
+        type: 'node',
+        label: eval('o.'+lb+'.value'),
+        uri: eval('o.'+cl+'.value'),
+        class: eval('o.'+cl+'.type==="uri"?"Class":"_blank"')
+      };
+      return {data: d, position: p, group: 'nodes', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
+    }
+
     console.log("QUERY OK");
     var nc = 1;
     var np = 1;
 
     p = { x: 0, y: 0 };
+    ca = _lh.map(data, (o) => mapToNode(o,nc++, 'class_a', 'class_a_label')); 
+    cb = _lh.map(data, (o) => mapToNode(o,nc++, 'class_b', 'class_b_label')); 
+    /* 
+    cb = _lh.map(data, (o) => { 
+      d = {
+        id: "n" + (nc++),
+        weight: 30,
+        type: 'node',
+        label: o.class_b_label.value,
+        uri: o.class_b.value,
+        class: o.class_b.type==='uri'?'Class':'_blank'
+      };
+      return {data: d, position: p, group: 'nodes', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
+    });
+    */
+
+    //unisco lasse_a e classe_b e tolgo i doppioni
+    nt = _lh.uniqBy(_lh.concat(ca,cb),'data.uri');
+
+    /*
     ca = _lh.map(data, (o) => { return {id : nc++, uri : o.class_a.value, label : o.class_a_label.value , type:'Class'} });
     cb = _lh.map(data, (o) => { return {id : nc++, uri : o.class_b.value, label : o.class_b_label.value , type:'Class'} });
     //unisco lasse_a e classe_b e tolgo i doppioni
@@ -98,6 +139,7 @@ handleData().then(
       d = { id: "n"+o.id, weight: 30, type: 'node', label: o.label, uri:o.uri, class: 'Classe' };
       return {data: d, position: p, group: 'nodes', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
     });
+    */
     //console.dir(nt,{depth:3});
 
     pp = _lh.map(data, (o) => { return {id : np++, uri : o.objprop.value, label : o.prop_label.value, type : o.type.value, from: o.class_a.value, to: o.class_b.value } });

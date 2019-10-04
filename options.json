@@ -1,5 +1,5 @@
 {
-  "layout": "cola",
+  "layout": "circle",
   "styles": [
     {
       "selector": "node",
@@ -16,7 +16,7 @@
       }
     },
     {
-      "selector": "node[class=\"Classe\"]",
+      "selector": "node[class=\"Class\"]",
       "style": {
         "shape": "ellipse",
         "background-color": "#ffaaff",

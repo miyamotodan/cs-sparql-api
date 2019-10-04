@@ -2,7 +2,7 @@
   "sources": [
     {
       "type": "sparql",
-      "value": "http://34.255.72.0/veneto/sparql"
+      "value": "http://dati.comune.milano.it:8890/sparql"
     }
   ],
   "query": [
@@ -11,7 +11,7 @@
       "value": [
         "select distinct ?class_a ?objprop ?class_b ?class_a_label ?prop_label ?class_b_label ?type ",
         "where { ",
-        "GRAPH <http://34.255.72.0/context/veneto/server/onto> { ",
+        "GRAPH <http://10.63.17.34:8890/schemas/ontomi#> { ",
         "?objprop a owl:ObjectProperty . ",
         "?objprop rdfs:domain ?class_a . ",
         "?objprop rdfs:range ?class_b . ",
