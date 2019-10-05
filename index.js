@@ -21,7 +21,7 @@ async function handleData() {
       console.log('-------------------------------------');
       console.log(query);
       console.log('-------------------------------------');
-      
+
   } catch(e) {
       console.log('Error reading query:', e.stack);
   }
@@ -50,7 +50,7 @@ async function handleData() {
       //console.dir(data,{depth:4});
       if (o.constructor.name === 'NamedNode')
         eval('record.'+field+'.type = "uri"');
-      else  
+      else
         eval('record.'+field+'.type = "blank"');
   }
 
@@ -109,13 +109,27 @@ handleData().then(
     //TODO
     function mapToEdge() { }
 
+
+    function isInPrefix(last, pre, vec) {
+
+        console.log("prefix : "+last);
+        console.log("("+vec.length+") "+" ["+vec[0]+"]...["+vec[vec.length-1]+"]");
+        console.log("common : "+pre+"\n");
+
+        if (pre === 'http://' || pre === 'https://') return false;
+        else
+        if (last.startsWith(pre) && (pre.endsWith('/') || pre.endsWith('#'))) return true;
+        else return true;
+
+    }
+
     console.log("QUERY OK");
     var nc = 1;
     var np = 1;
 
     p = { x: 0, y: 0 };
-    ca = _lh.map(data, (o) => mapToNode(o,nc++, 'class_a', 'class_a_label')); 
-    cb = _lh.map(data, (o) => mapToNode(o,nc++, 'class_b', 'class_b_label')); 
+    ca = _lh.map(data, (o) => mapToNode(o,nc++, 'class_a', 'class_a_label'));
+    cb = _lh.map(data, (o) => mapToNode(o,nc++, 'class_b', 'class_b_label'));
 
     //unisco lasse_a e classe_b e tolgo i doppioni
     nt = _lh.uniqBy(_lh.concat(ca,cb),'data.uri');
@@ -128,28 +142,41 @@ handleData().then(
             return a1.substring(0, i);
           }
 
-          cc = [];
-          nc = 1;
+          cc = []; // vettore dei compound
+          nc = 1; //nuimero dei compound
+          lastSS = ""; //parte comune dell'uri
+
           //inserisco il primo compound
-          cc.push({ group: 'nodes', data : { id: "c" + nc++, type: "node", class : 'compound'} }); 
+          cc.push({ group: 'nodes', data : { id: "c" + nc++, type: "node", class : 'compound'} });
 
           var slicer=0;
-          sorted_nt = _lh.sortBy(nt, ["data.uri"]); 
+          sorted_nt = _lh.sortBy(nt, ["data.uri"]);
           sorted_nt.forEach((element,index,array) => {
+
             if(index>=1) {
-              ss = sharedStart(array.slice(slicer,index));
-              if (ss!=='http://' || ss.length==0) element.data.parent = "c" + (nc-1);
+              sli = array.slice(slicer,index+1);
+              ss = sharedStart(sli);
+
+              if (isInPrefix(lastSS, ss, _lh.map(sli, (o) => {return o.data.uri} ))) {
+                element.data.parent = "c" + (nc-1);
+                lastSS = ss;
+              }
               else {
+                //assegno la labal al compound da chiudere
+                cc[cc.length-1].data.label=lastSS;
+                console.log(lastSS+" CLOSED ===================================================");
+
                 //creo un nuovo compound
-                cc.push({ group: 'nodes', data : { id: "c" + nc++, type: "node", class : 'compound'} }); 
+                cc.push({ group: 'nodes', data : { id: "c" + nc++, type: "node", class : 'compound'} });
                 //aggiungo l'elemento corrente al compound creato
                 element.data.parent = "c" + (nc-1);
                 slicer = index;
               }
-              //console.log(index + ":" +element.data.uri+" => "+ss);
             } else {
               //associo il primo al primo compound
               element.data.parent = "c" + (nc-1);
+              //inizializzo il nome del compound
+              lastSS = element.data.uri;
             }
           });
 

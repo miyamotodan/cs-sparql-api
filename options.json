@@ -38,7 +38,7 @@
         "border-color": "#aa0055",
         "border-width": 4,
         "border-style" : "dotted",
-        "label": "data(id)",
+        "label": "data(label)",
         "text-halign": "left",
         "text-valign": "top"
       }
