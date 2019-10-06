@@ -120,7 +120,7 @@ handleData().then(
     //unisco lasse_a e classe_b e tolgo i doppioni
     nt = _lh.uniqBy(_lh.concat(ca,cb),'data.uri');
     //console.dir(nt,{depth:3});
-    
+
     //ESPERIMENTO SULLA CREAZIONE DI NODI AGGIUNTIVI PER CREARE COMPOUND
 
           function extractPrefix(str) {
@@ -128,13 +128,13 @@ handleData().then(
             lastSlash=str.lastIndexOf('/');
             lastHash=str.lastIndexOf('#');
             if (lastHash!=-1 && lastSlash!=-1)
-              if (lastHash>lastSlash) 
-                  if (lastHash-lastSlash==1) 
+              if (lastHash>lastSlash)
+                  if (lastHash-lastSlash==1)
                   return str.substring(0,lastSlash+1)
                   else return str.substring(0,lastHash+1)
-              else return str.substring(0,lastSlash+1)  
+              else return str.substring(0,lastSlash+1)
             if ( lastHash != -1) return str.substring(0,lastHash+1)
-            else 
+            else
             if ( lastSlash != -1) return str.substring(0,lastSlash+1);
             else return "_blank";
 
@@ -153,28 +153,28 @@ handleData().then(
             if (lastPr==="") {
                 lastPr = pr;
                 //inserisco il primo compound
-                cc.push({ group: 'nodes', data : { id: "c" + nc++, label: pr ,type: "node", class : 'compound'} });
+                cc.push({ group: 'nodes', data : { id: "c" + nc++, label: pr ,type: "node", class : 'compound'}, selectable: false, grabbable: false });
             }
 
             if (pr===lastPr) {
-              element.data.parent = "c" + (nc-1);  
+              element.data.parent = "c" + (nc-1);
             } else {
               console.log(lastPr+" CLOSED ===================================================\n");
 
               //creo un nuovo compound
-              cc.push({ group: 'nodes', data : { id: "c" + nc++, label: pr ,type: "node", class : 'compound'} });
+              cc.push({ group: 'nodes', data : { id: "c" + nc++, label: pr ,type: "node", class : 'compound'}, selectable: false, grabbable: false });
               //aggiungo l'elemento corrente al compound creato
               element.data.parent = "c" + (nc-1);
-              
+
               if (lastPr.startsWith(pr)) {
                   cc[nc-2].data.parent = cc[nc-3].data.id;
                   //console.log(cc[nc-2]);
                   //console.log(cc[nc-3]);
               }
-              
+
               lastPr = pr;
 
-              
+
             }
 
           });
@@ -211,6 +211,7 @@ handleData().then(
       graphVectorObj.graphs.push(graphObj);
 
       //console.dir(graphVectorObj , {depth: 5});
+      console.log("created :"+ graphObj.graph.length)
 
       _fs.writeFile('graph-db.json', JSON.stringify(graphVectorObj,null,2) , 'utf-8', (err) => {
           if (err) throw err;
