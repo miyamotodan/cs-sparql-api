@@ -109,20 +109,6 @@ handleData().then(
     //TODO
     function mapToEdge() { }
 
-
-    function isInPrefix(last, pre, vec) {
-
-        console.log("prefix : "+last);
-        console.log("("+vec.length+") "+" ["+vec[0]+"]...["+vec[vec.length-1]+"]");
-        console.log("common : "+pre+"\n");
-
-        if (pre === 'http://' || pre === 'https://') return false;
-        else
-        if (last.startsWith(pre) && (pre.endsWith('/') || pre.endsWith('#'))) return true;
-        else return true;
-
-    }
-
     console.log("QUERY OK");
     var nc = 1;
     var np = 1;
@@ -134,50 +120,63 @@ handleData().then(
     //unisco lasse_a e classe_b e tolgo i doppioni
     nt = _lh.uniqBy(_lh.concat(ca,cb),'data.uri');
     //console.dir(nt,{depth:3});
-
+    
     //ESPERIMENTO SULLA CREAZIONE DI NODI AGGIUNTIVI PER CREARE COMPOUND
-          function sharedStart(array){
-            var A= array, a1= A[0].data.uri, a2= A[A.length-1].data.uri, L= a1.length, i= 0;
-            while(i<L && a1.charAt(i)=== a2.charAt(i)) i++;
-            return a1.substring(0, i);
+
+          function extractPrefix(str) {
+
+            lastSlash=str.lastIndexOf('/');
+            lastHash=str.lastIndexOf('#');
+            if (lastHash!=-1 && lastSlash!=-1)
+              if (lastHash>lastSlash) 
+                  if (lastHash-lastSlash==1) 
+                  return str.substring(0,lastSlash+1)
+                  else return str.substring(0,lastHash+1)
+              else return str.substring(0,lastSlash+1)  
+            if ( lastHash != -1) return str.substring(0,lastHash+1)
+            else 
+            if ( lastSlash != -1) return str.substring(0,lastSlash+1);
+            else return "_blank";
+
           }
 
           cc = []; // vettore dei compound
           nc = 1; //nuimero dei compound
-          lastSS = ""; //parte comune dell'uri
+          lastPr = ""; //parte comune dell'uri
 
-          //inserisco il primo compound
-          cc.push({ group: 'nodes', data : { id: "c" + nc++, type: "node", class : 'compound'} });
-
-          var slicer=0;
           sorted_nt = _lh.sortBy(nt, ["data.uri"]);
+          //console.log(_lh.map(sorted_nt, (o) => {return o.data.uri + "-->" + extractPrefix( o.data.uri) } ))
+
           sorted_nt.forEach((element,index,array) => {
 
-            if(index>=1) {
-              sli = array.slice(slicer,index+1);
-              ss = sharedStart(sli);
-
-              if (isInPrefix(lastSS, ss, _lh.map(sli, (o) => {return o.data.uri} ))) {
-                element.data.parent = "c" + (nc-1);
-                lastSS = ss;
-              }
-              else {
-                //assegno la labal al compound da chiudere
-                cc[cc.length-1].data.label=lastSS;
-                console.log(lastSS+" CLOSED ===================================================");
-
-                //creo un nuovo compound
-                cc.push({ group: 'nodes', data : { id: "c" + nc++, type: "node", class : 'compound'} });
-                //aggiungo l'elemento corrente al compound creato
-                element.data.parent = "c" + (nc-1);
-                slicer = index;
-              }
-            } else {
-              //associo il primo al primo compound
-              element.data.parent = "c" + (nc-1);
-              //inizializzo il nome del compound
-              lastSS = element.data.uri;
+            pr = extractPrefix(element.data.uri);
+            if (lastPr==="") {
+                lastPr = pr;
+                //inserisco il primo compound
+                cc.push({ group: 'nodes', data : { id: "c" + nc++, label: pr ,type: "node", class : 'compound'} });
             }
+
+            if (pr===lastPr) {
+              element.data.parent = "c" + (nc-1);  
+            } else {
+              console.log(lastPr+" CLOSED ===================================================\n");
+
+              //creo un nuovo compound
+              cc.push({ group: 'nodes', data : { id: "c" + nc++, label: pr ,type: "node", class : 'compound'} });
+              //aggiungo l'elemento corrente al compound creato
+              element.data.parent = "c" + (nc-1);
+              
+              if (lastPr.startsWith(pr)) {
+                  cc[nc-2].data.parent = cc[nc-3].data.id;
+                  //console.log(cc[nc-2]);
+                  //console.log(cc[nc-3]);
+              }
+              
+              lastPr = pr;
+
+              
+            }
+
           });
 
           //console.dir(cc, {depth:3});
