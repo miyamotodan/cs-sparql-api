@@ -12,7 +12,7 @@ async function handleData() {
   var query = '';
   var sources = [];
   try {
-      objQuery =  JSON.parse( _fs.readFileSync('milano.sparql.json', 'utf8') );
+      objQuery =  JSON.parse( _fs.readFileSync('veneto.sparql.json', 'utf8') );
       //prendo la query per le classi e le object property
       query = objQuery.query.find(x => x.name === 'classes').value.join("\n");
       sources = objQuery.sources;
