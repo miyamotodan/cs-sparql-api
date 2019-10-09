@@ -1,0 +1,26 @@
+{
+  "sources": [
+    {
+      "type": "sparql",
+      "value": "https://www.politicheagricole.it/opendata/sparql"
+    }
+  ],
+  "query": [
+    {
+      "name": "classes",
+      "value": [
+        "select distinct ?class_a ?objprop ?class_b ?class_a_label ?prop_label ?class_b_label ?type ",
+        "where { ",
+        "#GRAPH <https://www.politicheagricole.it/opendata/onto/agr> { ",
+        "?objprop a owl:ObjectProperty . ",
+        "?objprop rdfs:domain ?class_a . ",
+        "?objprop rdfs:range ?class_b . ",
+        "OPTIONAL { ?objprop rdfs:label ?prop_label }. ",
+        "OPTIONAL { ?class_a rdfs:label ?class_a_label } . ",
+        "OPTIONAL { ?class_b rdfs:label ?class_b_label } ",
+        "BIND('ObjectProperty' AS ?type) ",
+        "} #}"
+      ]
+    }
+  ]
+}

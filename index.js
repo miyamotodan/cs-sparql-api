@@ -16,7 +16,7 @@ async function handleData() {
   var query = '';
   var sources = [];
   try {
-      objQuery =  JSON.parse( _fs.readFileSync('veneto.sparql.json', 'utf8') );
+      objQuery =  JSON.parse( _fs.readFileSync('dbpedia.sparql.json', 'utf8') );
       //prendo la query per le classi e le object property
       query = objQuery.query.find(x => x.name === 'classes').value.join("\n");
       sources = objQuery.sources;
@@ -38,12 +38,12 @@ async function handleData() {
       stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
     })
   }
-  
+
   const result = await engine.query(query, { sources });
   const readable =  (await engine.resultToString(result, 'application/sparql-results+json', result.context)).data;
   const risultato = await streamToString(readable);
   objResult =  JSON.parse( risultato );
-  
+
   return objResult;
 
 } //END async function handleData()
@@ -61,7 +61,7 @@ async function handleData() {
       eval ('if(o.'+lb+') _lb=o.'+lb+'.value');
       _cl = "";
       eval ('if(o.'+cl+') _cl=o.'+cl+'.value');
-      
+
       d = {
         id: "n" + nc,
         weight: 30,
@@ -74,7 +74,7 @@ async function handleData() {
     }
 
     //TODO
-    function mapToEdge(o, nt, np, lb, pr) { 
+    function mapToEdge(o, nt, np, lb, pr) {
       _lb = "";
       eval ('if(o.'+lb+') _lb=o.'+lb+'.value');
       _pr = "";
@@ -82,17 +82,17 @@ async function handleData() {
       _cl = "";
       if (o.type) _cl = o.type.value;
 
-      d = { 
-        id: "e" + np, 
-        weight: 2, 
-        type: 'edge', 
-        label: _lb, 
-        uri: _pr, 
-        class: _cl, 
-        source: nt.find(x => x.data.uri === o.class_a.value).data.id, 
-        target: nt.find(x => x.data.uri === o.class_b.value).data.id 
+      d = {
+        id: "e" + np,
+        weight: 2,
+        type: 'edge',
+        label: _lb,
+        uri: _pr,
+        class: _cl,
+        source: nt.find(x => x.data.uri === o.class_a.value).data.id,
+        target: nt.find(x => x.data.uri === o.class_b.value).data.id
       };
-      return {data: d, position: p, group: 'edges', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''}; 
+      return {data: d, position: p, group: 'edges', removed : false, selected: false, selectable: true, locked: false, grabbable: true, classes: ''};
     }
 
     console.log("QUERY OK");

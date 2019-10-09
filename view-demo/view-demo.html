@@ -77,6 +77,7 @@
 
             var hideAllTippies = function() {
                 cy.nodes().forEach(hideTippy);
+                cy.edges().forEach(hideTippy);
             };
 
             //carico il json
@@ -120,50 +121,68 @@
                               return el;
                           };
 
-                          //------------
+                          //imposto i tip per gli archi
+                          this.edges().forEach(function(edge) {
+                            var tippy = makeTippy(edge, h('div', {}, [
+                                                                        t(edge.data('label')),
+                                                                        h('br',{},[]),
+                                                                        h('a', {href:edge.data('uri')}, [t(edge.data('uri'))])
+                                                                      ]));
 
+                            edge.data('tippy', tippy);
+
+                            edge.on('click', function(e) {
+
+                                if(tippy) {
+                                  tippy.show();
+                                  //non funziona
+                                  //this.edges().not(edge).forEach(hideTippy);
+                                }
+                            });
+
+                          });
+
+                          //imposto i tip per i nodi
                           this.nodes().forEach(function(node) {
-                              //let width = [30, 70, 110];
-                              //let size = width[Math.floor(Math.random() * 3)];
-                              //node.css("width", size);
-                              //node.css("height", size);
-
-                              //----------------
-
                               if (node.data('class')!=='compound')
-                              var tippy = makeTippy(node, h('div', {}, [t(node.data('label'))]));
+                                if (node.data('class')!=='_blank')
+                                   var tippy = makeTippy(node, h('div', {}, [
+                                                                          t(node.data('label')),
+                                                                          h('br',{},[]),
+                                                                          h('a', {href:node.data('uri')}, [t(node.data('uri'))])
+                                                                        ]));
+                                else
+                                var tippy = makeTippy(node, h('div', {}, [
+                                                                       t(node.data('uri'))
+                                                                     ]));
+
                               node.data('tippy', tippy);
 
                               node.on('click', function(e) {
 
                                   if(tippy) {
                                     tippy.show();
-                                    this.nodes().not(node).forEach(hideTippy);
+                                    //non funziona
+                                    //this.nodes().not(node).forEach(hideTippy);
                                   }
                               });
-                              //----------------
 
                           });
 
-                          //this.layout({
-                          //    name: 'fcose'
-                          //}).run();
-
-                          //------------
                           this.on('tap', function(e) {
                               if (e.target === cy) {
                                   hideAllTippies();
                               }
                           });
 
+                          /*
                           this.on('tap', 'edge', function(e) {
                               hideAllTippies();
                           });
-
                           this.on('zoom pan', function(e) {
                               hideAllTippies();
                           });
-                          //------------
+                          */
 
                       },
                       // demo your layout
