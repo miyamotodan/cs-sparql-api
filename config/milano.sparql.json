@@ -7,7 +7,7 @@
   ],
   "query": [
     {
-      "name": "classes",
+      "name": "ObjectProprties",
       "value": [
         "select distinct ?class_a ?objprop ?class_b ?class_a_label ?prop_label ?class_b_label ?type ",
         "where { ",
@@ -22,22 +22,6 @@
         "OPTIONAL { ?class_b rdfs:label ?class_b_label } ",
         "BIND('ObjectProperty' AS ?type) ",
         "} }"
-      ]
-    }
-    ,
-    {
-      "name": "parents",
-      "value": [
-        "select distinct ?class_a ?class_b ?class_a_label ?class_b_label ",
-        "where { ",
-        "#GRAPH <http://10.63.17.34:8890/schemas/ontomi#> { ",
-        "#GRAPH <http://dati.gov.it/onto/cpsvapit> { ",  
-        "GRAPH <http://dati.san.beniculturali.it/SAN> { ",
-        "?class_a rdfs:subClassOf ?class_b . ",
-        "OPTIONAL { ?class_a rdfs:label ?class_a_label } . ",
-        "OPTIONAL { ?class_b rdfs:label ?class_b_label } ",
-        "BIND('subClassOf' AS ?type) ",
-        " }} "
       ]
     }
   ]
