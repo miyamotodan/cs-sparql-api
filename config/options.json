@@ -46,12 +46,11 @@
     {
       "selector": "node[class=\"union\"]",
       "style": {
-        "background-opacity" : 0.1,
-        "shape": "ellipse",
+        "background-opacity" : 1,
+        "shape": "diamond",
         "background-color": "#555555",
         "border-color": "#FF1111",
-        "border-width": 6,
-        "border-style" : "dashed",
+        "border-width": 1,
         "label": "data(label)",
         "text-halign": "left",
         "text-valign": "top"
@@ -73,6 +72,15 @@
         "curve-style": "bezier",
         "target-arrow-shape": "circle",
         "target-arrow-color": "#808080"
+      }
+    },
+    {
+      "selector": "edge[class=\"union\"]",
+      "style": {
+        "width": "2",
+        "line-color": "#'00FF00",
+        "curve-style": "bezier",
+        "line-style": "dotted"
       }
     },
     {

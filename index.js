@@ -80,18 +80,17 @@ isObject = function(a) {
   return (!!a) && (a.constructor === Object);
 };
 
-function mapToNode(o, nc, cl, lb) {
+function mapToNode(o, nc, cl, lb, obj) {
   //console.log(o.union);
-  
+
   p = { x: Math.random()*100, y: Math.random()*100 };
-  
+
   _lb = "";
   eval('if(o.' + lb + ' && isObject(o.'+lb+')) _lb=o.' + lb + '.value; else _lb=o.' + lb);
   _cl = "";
   eval('if(o.' + cl + ' && isObject(o.'+cl+')) _cl=o.' + cl + '.value; else _cl=o.' + cl);
   _class = "";
   eval('if(o.'+ cl +' && isObject(o.'+cl+')) _class=o.' + cl + '.type==="uri"?"Class":"_blank"; else _class=cl;')
-
   d = {
     id: "n" + nc,
     weight: 30,
@@ -100,16 +99,19 @@ function mapToNode(o, nc, cl, lb) {
     uri: _cl,
     class: _class
   };
+  if (obj!==null) {
+      eval('d.'+_lh.keys(obj)[0]+'=obj.'+_lh.keys(obj)[0]+';');
+  }
   return { data: d, position: p, group: 'nodes', removed: false, selected: false, selectable: true, locked: false, grabbable: true, classes: '' };
 }
 
-function mapToEdge(o, nt, np, lb, pr) {
+function mapToEdge(o, np, src, trg, pr, lb) {
   _lb = "";
-  eval('if(o.' + lb + ') _lb=o.' + lb + '.value');
+  eval('if(o.' + lb + ' && isObject(o.'+lb+')) _lb=o.' + lb + '.value; else _lb=o.' + lb);
   _pr = "";
-  eval('if(o.' + pr + ') _cl=o.' + pr + '.value');
-  _cl = "";
-  if (o.type) _cl = o.type.value;
+  eval('if(o.' + pr + ' && isObject(o.'+pr+')) _pr=o.' + pr + '.value; else _pr=o.' + pr);
+  _class = "";
+  eval('if(o.type && isObject(o.type)) _class=o.type.value; else _class=_lb');
 
   d = {
     id: "e" + np,
@@ -117,9 +119,9 @@ function mapToEdge(o, nt, np, lb, pr) {
     type: 'edge',
     label: _lb,
     uri: _pr,
-    class: _cl,
-    source: nt.find(x => x.data.uri === o.class_a.value).data.id,
-    target: nt.find(x => x.data.uri === o.class_b.value).data.id
+    class: _class,
+    source: src,
+    target: trg
   };
   return { data: d, position: p, group: 'edges', removed: false, selected: false, selectable: true, locked: false, grabbable: true, classes: '' };
 }
@@ -137,7 +139,7 @@ console.log('start');
 var query = '';
 var sources = [];
 try {
-  objQuery = JSON.parse(_fs.readFileSync('config/veneto.sparql.json', 'utf8'));
+  objQuery = JSON.parse(_fs.readFileSync('config/mipaaf.sparql.json', 'utf8'));
 } catch (e) {
   console.log('Error reading query:', e.stack);
 }
@@ -159,8 +161,8 @@ function step1() {
       var nc = 1;
       var np = 1;
 
-      ca = _lh.map(data.results.bindings, (o) => mapToNode(o, nc++, 'class_a', 'class_a_label'));
-      cb = _lh.map(data.results.bindings, (o) => mapToNode(o, nc++, 'class_b', 'class_b_label'));
+      ca = _lh.map(data.results.bindings, (o) => mapToNode(o, nc++, 'class_a', 'class_a_label', null));
+      cb = _lh.map(data.results.bindings, (o) => mapToNode(o, nc++, 'class_b', 'class_b_label', null));
 
       //unisco lasse_a e classe_b e tolgo i doppioni
       nt = _lh.uniqBy(_lh.concat(ca, cb), 'data.uri');
@@ -217,11 +219,18 @@ function step1() {
       //FINE CREAZIONE COMPOUND
 
       //mappo gli archi
-      pt = _lh.map(data.results.bindings, (o) => mapToEdge(o, nt, np++, 'objprop', 'prop_label'));
+      pt = _lh.map(data.results.bindings, (o) => {
+
+        let src = nt.find(x => x.data.uri === o.class_a.value).data.id;
+        let trg = nt.find(x => x.data.uri === o.class_b.value).data.id;
+        //console.log(src+"-->"+trg);
+        return mapToEdge(o, np++, src, trg, 'objprop', 'prop_label');
+      });
 
       gComp = [[...sorted_nt,...cc], pt];
 
       step2();
+      //writeToFile(gComp);
 
     }).catch(
       (error) => {
@@ -255,7 +264,7 @@ function step2() {
       //console.dir(gb, {depth:4});
       u = [];
       v.forEach((o1) => {
-        //se un u non ci sono unioni di classi con la stessa lista di classi di o1 ne creo una nuova
+        //se in u[] non ci sono unioni di classi con la stessa lista di classi di o1 ne creo una nuova
         uv = _lh.filter(u, (o2) => {
           if (o2.classes.length > o1.classes.length)
             return (_lh.difference(o2.classes, o1.classes).length === 0);
@@ -266,7 +275,7 @@ function step2() {
           u.push(new_u);
         }
         else {
-          //altrimenti aggiungo il nodo blank corrente all'unione 
+          //altrimenti aggiungo il nodo blank corrente all'unione
           var i = _lh.findIndex(u, function (o) { return o.union === uv[0].union });
           u[i].blank.push(o1.blank);
         }
@@ -274,13 +283,58 @@ function step2() {
       });
 
       //console.log(u);
+      //calcolo il massimo tra gli ID dei nodi
       max = _lh.maxBy(gComp[0], (o) => {return parseInt(o.data.id.substring(1)) });
       nc = (max.data.id).substring(1);
-      cu = _lh.map(u, (o) => mapToNode(o, nc++, 'union', 'union'));
-      //console.log(cu);
+      //creo i nodi relativi alla union
+      cu = _lh.map(u, (o) => mapToNode(o, nc++, 'union', 'union', {blank:o.blank}));
+
+      //console.log(gComp[1]);
+
+      //TODO:verificare se vengono creati archi doppi
+      //per ognuna delle unioni devo creare un arco tra le classi coinvolte ed eliminare i _blank
+      ee = [];
+      //calcolo il massimo tra gli ID degli archi
+      max = _lh.maxBy(gComp[1], (o) => {return parseInt(o.data.id.substring(1)) });
+      nt = (max.data.id).substring(1);
+      u.forEach( (nn) => {
+
+          //scorro i nodi _blank rappresentano l'unione
+          for (let i=0; i<nn.blank.length; i++) {
+              //ricavo l'id
+              bid = gComp[0].find(x => x.data.uri === nn.blank[i]);
+              if (bid) {
+                bid = bid.data.id;
+                //elimino il nodo
+                r = _lh.remove(gComp[0], function(n) { return n.data.id === bid; });
+                //elimino gli archi che partono o arrivano da quel nodo
+                r = _lh.remove(gComp[1], function(e) { return (e.data.source === bid || e.data.target === bid) });
+              }
+          }
+
+          //scorro le classi dell'unione
+          for (let i=0; i<nn.classes.length; i++) {
+            //ricavo l'id
+            bid = gComp[0].find(x => x.data.uri === nn.classes[i]);
+            if (bid) {
+                bid=bid.data.id;
+                //ricavo l'id
+                uid = cu.find(x => x.data.uri === nn.union);
+                if (uid) {
+                    uid=uid.data.id;
+                    //creo un arco dalla classe al nodo dell'unione
+                    ee.push(mapToEdge({label:'union', property:'owl:unionOf'}, nt++, bid, uid, 'property','label'));
+                }
+            }
+          }
+        });
+
+      //console.dir(ee,{depth:4});
 
       //aggiungo i nuovi nodi
       gComp[0] = [...gComp[0],...cu];
+      //aggiungo i nuovi archi
+      gComp[1] = [...gComp[1],...ee];
 
 
       //scrivo su disco il grafo
