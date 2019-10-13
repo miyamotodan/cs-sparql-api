@@ -44,6 +44,20 @@
       }
     },
     {
+      "selector": "node[class=\"union\"]",
+      "style": {
+        "background-opacity" : 0.1,
+        "shape": "ellipse",
+        "background-color": "#555555",
+        "border-color": "#FF1111",
+        "border-width": 6,
+        "border-style" : "dashed",
+        "label": "data(label)",
+        "text-halign": "left",
+        "text-valign": "top"
+      }
+    },
+    {
       "selector": "node:selected",
       "style": {
         "background-color": "#ffef96",

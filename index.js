@@ -22,9 +22,9 @@ async function writeToFile(v) {
     var graphVectorObj = { graphs: [] };
     optObj = JSON.parse(data);
 
-    console.log("nodes :" + v[0].length + ", edges:" + v[1].length + ", compounds:" + v[2].length);
+    console.log("nodes :" + v[0].length + ", edges:" + v[1].length);
 
-    graphObj.graph = [...v[0], ...v[1], ...v[2]];
+    graphObj.graph = [...v[0], ...v[1]];
     graphObj.options = optObj;
     graphVectorObj.graphs.push(graphObj);
 
@@ -72,6 +72,58 @@ function logQuery(query, sources) {
 
 }
 
+isArray = function(a) {
+  return (!!a) && (a.constructor === Array);
+};
+
+isObject = function(a) {
+  return (!!a) && (a.constructor === Object);
+};
+
+function mapToNode(o, nc, cl, lb) {
+  //console.log(o.union);
+  
+  p = { x: Math.random()*100, y: Math.random()*100 };
+  
+  _lb = "";
+  eval('if(o.' + lb + ' && isObject(o.'+lb+')) _lb=o.' + lb + '.value; else _lb=o.' + lb);
+  _cl = "";
+  eval('if(o.' + cl + ' && isObject(o.'+cl+')) _cl=o.' + cl + '.value; else _cl=o.' + cl);
+  _class = "";
+  eval('if(o.'+ cl +' && isObject(o.'+cl+')) _class=o.' + cl + '.type==="uri"?"Class":"_blank"; else _class=cl;')
+
+  d = {
+    id: "n" + nc,
+    weight: 30,
+    type: 'node',
+    label: _lb,
+    uri: _cl,
+    class: _class
+  };
+  return { data: d, position: p, group: 'nodes', removed: false, selected: false, selectable: true, locked: false, grabbable: true, classes: '' };
+}
+
+function mapToEdge(o, nt, np, lb, pr) {
+  _lb = "";
+  eval('if(o.' + lb + ') _lb=o.' + lb + '.value');
+  _pr = "";
+  eval('if(o.' + pr + ') _cl=o.' + pr + '.value');
+  _cl = "";
+  if (o.type) _cl = o.type.value;
+
+  d = {
+    id: "e" + np,
+    weight: 2,
+    type: 'edge',
+    label: _lb,
+    uri: _pr,
+    class: _cl,
+    source: nt.find(x => x.data.uri === o.class_a.value).data.id,
+    target: nt.find(x => x.data.uri === o.class_b.value).data.id
+  };
+  return { data: d, position: p, group: 'edges', removed: false, selected: false, selectable: true, locked: false, grabbable: true, classes: '' };
+}
+
 //vettore che contiene
 // 0: vettore dei nodi, 1: vettore degli archi, 2: vettore dei compound, 3:vettore delle union
 var gComp = [];
@@ -104,48 +156,9 @@ function step1() {
       console.log("QUERY ObjectProperties OK");
       console.log("resultSet rows: " + data.results.bindings.length);
 
-      function mapToNode(o, nc, cl, lb) {
-        _lb = "";
-        eval('if(o.' + lb + ') _lb=o.' + lb + '.value');
-        _cl = "";
-        eval('if(o.' + cl + ') _cl=o.' + cl + '.value');
-
-        d = {
-          id: "n" + nc,
-          weight: 30,
-          type: 'node',
-          label: _lb,
-          uri: _cl,
-          class: eval('o.' + cl + '.type==="uri"?"Class":"_blank"')
-        };
-        return { data: d, position: p, group: 'nodes', removed: false, selected: false, selectable: true, locked: false, grabbable: true, classes: '' };
-      }
-
-      function mapToEdge(o, nt, np, lb, pr) {
-        _lb = "";
-        eval('if(o.' + lb + ') _lb=o.' + lb + '.value');
-        _pr = "";
-        eval('if(o.' + pr + ') _cl=o.' + pr + '.value');
-        _cl = "";
-        if (o.type) _cl = o.type.value;
-
-        d = {
-          id: "e" + np,
-          weight: 2,
-          type: 'edge',
-          label: _lb,
-          uri: _pr,
-          class: _cl,
-          source: nt.find(x => x.data.uri === o.class_a.value).data.id,
-          target: nt.find(x => x.data.uri === o.class_b.value).data.id
-        };
-        return { data: d, position: p, group: 'edges', removed: false, selected: false, selectable: true, locked: false, grabbable: true, classes: '' };
-      }
-
       var nc = 1;
       var np = 1;
 
-      p = { x: 0, y: 0 };
       ca = _lh.map(data.results.bindings, (o) => mapToNode(o, nc++, 'class_a', 'class_a_label'));
       cb = _lh.map(data.results.bindings, (o) => mapToNode(o, nc++, 'class_b', 'class_b_label'));
 
@@ -206,7 +219,7 @@ function step1() {
       //mappo gli archi
       pt = _lh.map(data.results.bindings, (o) => mapToEdge(o, nt, np++, 'objprop', 'prop_label'));
 
-      gComp = [sorted_nt, pt, cc];
+      gComp = [[...sorted_nt,...cc], pt];
 
       step2();
 
@@ -234,26 +247,41 @@ function step2() {
       //console.dir(data,{depth:4});
       gb = _lh.groupBy(data.results.bindings, 'blank.value');
       v = [];
-      _lh.forIn(gb, function(value, key) {
-        v.push({blank:key, classes:_lh.map(value, 'class.value')});
+      _lh.forIn(gb, function (value, key) {
+        v.push({ blank: key, classes: _lh.map(value, 'class.value') });
       });
+      //console.dir(v, {depth:4});
 
-      //console.log(v);
-      u=[];
+      //console.dir(gb, {depth:4});
+      u = [];
       v.forEach((o1) => {
         //se un u non ci sono unioni di classi con la stessa lista di classi di o1 ne creo una nuova
-        uv = _lh.filter(u, (o2) => { return (_lh.difference(o2.classes,o1.classes).length==0) });
-        if( uv.length == 0)
-          u.push( {blank: [o1.blank] , classes:o1.classes, union:"u"+u.length})
+        uv = _lh.filter(u, (o2) => {
+          if (o2.classes.length > o1.classes.length)
+            return (_lh.difference(o2.classes, o1.classes).length === 0);
+          return (_lh.difference(o1.classes, o2.classes).length === 0);
+        });
+        if (uv.length === 0) {
+          new_u = { blank: [o1.blank], classes: o1.classes, union: "u" + u.length };
+          u.push(new_u);
+        }
         else {
           //altrimenti aggiungo il nodo blank corrente all'unione 
-          var i = _lh.findIndex(u, function(o) { return o.union == uv[0].union });
+          var i = _lh.findIndex(u, function (o) { return o.union === uv[0].union });
           u[i].blank.push(o1.blank);
         }
 
       });
-      
-      console.log(u);
+
+      //console.log(u);
+      max = _lh.maxBy(gComp[0], (o) => {return parseInt(o.data.id.substring(1)) });
+      nc = (max.data.id).substring(1);
+      cu = _lh.map(u, (o) => mapToNode(o, nc++, 'union', 'union'));
+      //console.log(cu);
+
+      //aggiungo i nuovi nodi
+      gComp[0] = [...gComp[0],...cu];
+
 
       //scrivo su disco il grafo
       writeToFile(gComp);
@@ -264,6 +292,6 @@ function step2() {
         console.error(error);
       }).finally(
         (data) => {
-                
+
         });
 }

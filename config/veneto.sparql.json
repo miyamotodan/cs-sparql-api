@@ -32,7 +32,7 @@
         "?prop rdfs:domain ?blank. ",
         "?blank owl:unionOf ?y. ",
         "?y rdf:rest*/rdf:first ?class ",
-        "} ORDER BY ?blank"
+        "}"
       ]
     }
   ]

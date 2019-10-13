@@ -21,6 +21,16 @@
         "BIND('ObjectProperty' AS ?type) ",
         "} #}"
       ]
+    },
+    {
+      "name": "DomainUnions",
+      "value": [
+        "SELECT distinct ?prop ?class ?blank WHERE { ",
+        "?prop rdfs:domain ?blank. ",
+        "?blank owl:unionOf ?y. ",
+        "?y rdf:rest*/rdf:first ?class ",
+        "}"
+      ]
     }
   ]
 }
