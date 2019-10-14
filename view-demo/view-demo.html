@@ -145,16 +145,18 @@
                           //imposto i tip per i nodi
                           this.nodes().forEach(function(node) {
                               if (node.data('class')!=='compound')
-                                if (node.data('class')!=='_blank')
-                                   var tippy = makeTippy(node, h('div', {}, [
-                                                                          t(node.data('label')),
-                                                                          h('br',{},[]),
-                                                                          h('a', {href:node.data('uri')}, [t(node.data('uri'))])
-                                                                        ]));
+                                if (node.data('class')!=='_blank') {
+                                    l = [];
+                                    node.data('uri').split(',').forEach((o)=>{ 
+                                        l.push(h('a', {href:o}, [t(o)]));
+                                        l.push(h('br',{},[]));
+                                    });
+                                   console.log(l.length);
+                                   l=[...[t(node.data('label')),h('br',{},[]),...l]];
+                                   var tippy = makeTippy(node, h('div', {}, l));
+                                }
                                 else
-                                var tippy = makeTippy(node, h('div', {}, [
-                                                                       t(node.data('uri'))
-                                                                     ]));
+                                    var tippy = makeTippy(node, h('div', {}, [t(node.data('uri'))]));
 
                               node.data('tippy', tippy);
 

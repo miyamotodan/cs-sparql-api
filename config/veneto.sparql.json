@@ -26,10 +26,29 @@
       ]
     },
     {
+      "name": "Unions",
+      "value": [
+        "SELECT distinct ?class ?blank WHERE { ",
+        "?blank owl:unionOf ?y. ",
+        "?y rdf:rest*/rdf:first ?class ",
+        "}"
+      ]
+    },
+    {
       "name": "DomainUnions",
       "value": [
         "SELECT distinct ?prop ?class ?blank WHERE { ",
         "?prop rdfs:domain ?blank. ",
+        "?blank owl:unionOf ?y. ",
+        "?y rdf:rest*/rdf:first ?class ",
+        "}"
+      ]
+    },
+    {
+      "name": "RangeUnions",
+      "value": [
+        "SELECT distinct ?prop ?class ?blank WHERE { ",
+        "?prop rdfs:range ?blank. ",
         "?blank owl:unionOf ?y. ",
         "?y rdf:rest*/rdf:first ?class ",
         "}"

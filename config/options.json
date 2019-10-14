@@ -78,6 +78,7 @@
       "selector": "edge[class=\"union\"]",
       "style": {
         "width": "2",
+        "target-arrow-shape": "none",
         "line-color": "#'00FF00",
         "curve-style": "bezier",
         "line-style": "dotted"
