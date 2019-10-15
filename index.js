@@ -160,7 +160,98 @@ try {
 }
 
 //inizio la pipeline
-step1();
+step0();
+
+function step0() {
+  //prendo la query per le classi e per costruire i compound
+  let query = objQuery.query.find(x => x.name === 'Classes').value.join("\n");
+  let sources = objQuery.sources;
+  logQuery(query, sources);
+  //eseguo la query
+  executeQuery(query, sources).then(
+    (data) => {
+      console.log("QUERY Classes OK");
+      console.log("resultSet rows: " + data.results.bindings.length);
+
+      //ordino i risultati per class dovessero esserci più label
+      //TODO:da gestire le labe lmultiple
+      //let vcl = _lh.sortBy(_lh.filter(data.results.bindings, (o) => { return o.class.type === 'uri' }), ["class.value"]);;
+      let vcl = _lh.sortBy(data.results.bindings, ["class.value"]);
+
+      let nClass = 1;
+      let vcls = _lh.map(vcl, (o) => mapToNode(o, nClass++, 'class', 'label', null));
+      
+      //aggiungo thing (che non viene dalla query delle classi)
+      vcls.unshift(mapToStaticNode(0,'http://www.w3.org/2002/07/owl#Thing','owl:Thing','Class',null));
+
+      //CREAZIONE COMPOUND
+      function extractPrefix(str) {
+
+        lastSlash = str.lastIndexOf('/');
+        lastHash = str.lastIndexOf('#');
+        if (lastHash != -1 && lastSlash != -1)
+          if (lastHash > lastSlash)
+            if (lastHash - lastSlash == 1)
+              return str.substring(0, lastSlash + 1)
+            else return str.substring(0, lastHash + 1)
+          else return str.substring(0, lastSlash + 1)
+        if (lastHash != -1) return str.substring(0, lastHash + 1)
+        else
+          if (lastSlash != -1) return str.substring(0, lastSlash + 1);
+          else return "_blank";
+
+      }
+
+      let vcc = []; // vettore dei compound
+      let nComp = 1; //nuimero dei compound
+      let lastPr = ""; //parte comune dell'uri
+
+      //lavoro sulle uri ordinate
+      vcls.forEach((element, index, array) => {
+
+        let pr = extractPrefix(element.data.uri);
+        if (lastPr === "") {
+          lastPr = pr;
+          //inserisco il primo compound
+          vcc.push({ group: 'nodes', data: { id: "c" + nComp++, label: pr, type: "node", class: 'compound' }, selectable: false, grabbable: false });
+        }
+
+        if (pr === lastPr) {
+          element.data.parent = "c" + (nComp - 1);
+        } else {
+          //console.log(lastPr + " CLOSED ===================================================\n");
+
+          //creo un nuovo compound
+          vcc.push({ group: 'nodes', data: { id: "c" + nComp++, label: pr, type: "node", class: 'compound' }, selectable: false, grabbable: false });
+          //aggiungo l'elemento corrente al compound creato
+          element.data.parent = "c" + (nComp - 1);
+
+          if (lastPr.startsWith(pr)) {
+            vcc[nComp - 2].data.parent = vcc[nComp - 3].data.id;
+          }
+          lastPr = pr;
+        }
+      });
+      //FINE CREAZIONE COMPOUND
+      
+      //console.dir(vcls,{depth:4});
+
+      //inserisco i nuovi nodi
+      gComp = [[...vcls, ...vcc],[]];
+      
+      //writeToFile(gComp);
+      step1();
+
+    }).catch(
+      (error) => {
+        console.log("QUERY Classes KO");
+        console.error(error);
+      }).finally(
+        (data) => {
+
+        });
+}
+
 
 //costruisce gli i nodi delle classi e gli archi relativi alle object property 
 //TODO: DA DIVIDERE !!!
@@ -175,9 +266,9 @@ function step1() {
       console.log("QUERY ObjectProperties OK");
       console.log("resultSet rows: " + data.results.bindings.length);
 
+      /*
       let nClass = 1;
-      let nPropr = 1;
-
+     
       let vca = _lh.map(data.results.bindings, (o) => mapToNode(o, nClass++, 'class_a', 'class_a_label', null));
       let vcb = _lh.map(data.results.bindings, (o) => mapToNode(o, nClass++, 'class_b', 'class_b_label', null));
 
@@ -234,18 +325,38 @@ function step1() {
         }
       });
       //FINE CREAZIONE COMPOUND
+      */
+
+      vnt = gComp[0];
+
+      //console.dir(vnt,{depth:4});
+
+      let nPropr = 1;
 
       //mappo gli archi
       let vpt = _lh.map(data.results.bindings, (o) => {
 
-        let src = vnt.find(x => x.data.uri === o.class_a.value).data.id;
-        let trg = vnt.find(x => x.data.uri === o.class_b.value).data.id;
+        //console.log(o);
+        
+        //cerco la sorgente
+        let src = vnt.find(x => x.data.uri === o.class_a.value);
+        if (src) src = src.data.id;
+        else console.log('!!!src non trovato!!! : '+o.class_a.value);
+        let trg = vnt.find(x => x.data.uri === o.class_b.value)
+        if (trg) trg = trg.data.id;
+        else console.log('!!!trg non trovato!!! : '+o.class_b.value);
+        
         //console.log(src+"-->"+trg);
-        return mapToEdge(o, nPropr++, src, trg, 'objprop', 'prop_label');
+
+        //se non ho trovato la sorgente o la destinazione lo lego a thing
+        //TODO:vedere se ci sono altre soluzioni...(creare la classe non trovata)
+        if (src && trg ) return mapToEdge(o, nPropr++, src, trg, 'objprop', 'prop_label');
+        else 
+        if (src) return mapToEdge(o, nPropr++, src, 'n0', 'objprop', 'prop_label');
+        else return mapToEdge(o, nPropr++, 'n0', trg, 'objprop', 'prop_label');   
       });
 
-      gComp = [[...sorted_vnt, ...vcc], vpt];
-
+      gComp[1] = vpt;    
       step2();
       //writeToFile(gComp);
 
@@ -325,7 +436,7 @@ function step2() {
       gComp[0] = [...gComp[0], ...vcu];
 
       //calcolo il massimo tra gli ID degli archi
-      max = _lh.maxBy(gComp[1], (o) => { return parseInt(o.data.id.substring(1)) });
+      max = _lh.maxBy(gComp[1], (o) => { console.log('#');console.log(o); return parseInt(o.data.id.substring(1)) });
       let nt = (max.data.id).substring(1);
       let vee = [];
       u.forEach((nn) => {
@@ -421,7 +532,7 @@ function step3() {
   //eseguo la query
   executeQuery(query, sources).then(
     (data) => {
-      console.log("QUERY DomainUnions OK");
+      console.log("QUERY DomainRangeUnions OK");
       console.log("resultSet rows: " + data.results.bindings.length);
 
       step3_1(data);
@@ -431,7 +542,7 @@ function step3() {
 
     }).catch(
       (error) => {
-        console.log("QUERY Unions KO");
+        console.log("QUERY DomainRangeUnions KO");
         console.error(error);
       }).finally(
         (data) => {
