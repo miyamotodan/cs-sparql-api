@@ -71,26 +71,26 @@ function logQuery(query, sources) {
 
 }
 
-isArray = function(a) {
+isArray = function (a) {
   return (!!a) && (a.constructor === Array);
 };
 
-isObject = function(a) {
+isObject = function (a) {
   return (!!a) && (a.constructor === Object);
 };
 
 function mapToNode(o, nc, cl, lb, obj) {
   //console.log(o.union);
 
-  let p = { x: Math.random()*100, y: Math.random()*100 };
+  let p = { x: Math.random() * 100, y: Math.random() * 100 };
 
   let _lb = "";
-  eval('if(o.' + lb + ' && isObject(o.'+lb+')) _lb=o.' + lb + '.value; else _lb=o.' + lb);
+  eval('if(o.' + lb + ' && isObject(o.' + lb + ')) _lb=o.' + lb + '.value; else _lb=o.' + lb);
   let _cl = "";
-  eval('if(o.' + cl + ' && isObject(o.'+cl+')) _cl=o.' + cl + '.value; else _cl=o.' + cl);
+  eval('if(o.' + cl + ' && isObject(o.' + cl + ')) _cl=o.' + cl + '.value; else _cl=o.' + cl);
   let _class = "";
-  eval('if(o.'+ cl +' && isObject(o.'+cl+')) _class=o.' + cl + '.type==="uri"?"Class":"_blank"; else _class=cl;')
-  
+  eval('if(o.' + cl + ' && isObject(o.' + cl + ')) _class=o.' + cl + '.type==="uri"?"Class":"_blank"; else _class=cl;')
+
   let d = {
     id: "n" + nc,
     weight: 30,
@@ -99,14 +99,14 @@ function mapToNode(o, nc, cl, lb, obj) {
     uri: _cl,
     class: _class
   };
-  if (obj!==null) {
-      eval('d.'+_lh.keys(obj)[0]+'=obj.'+_lh.keys(obj)[0]+';');
+  if (obj !== null) {
+    eval('d.' + _lh.keys(obj)[0] + '=obj.' + _lh.keys(obj)[0] + ';');
   }
   return { data: d, position: p, group: 'nodes', removed: false, selected: false, selectable: true, locked: false, grabbable: true, classes: '' };
 }
 
 function mapToStaticNode(nc, ur, lb, cl, obj) {
-  let p = { x: Math.random()*100, y: Math.random()*100 };
+  let p = { x: Math.random() * 100, y: Math.random() * 100 };
   let d = {
     id: "n" + nc,
     weight: 30,
@@ -115,18 +115,18 @@ function mapToStaticNode(nc, ur, lb, cl, obj) {
     uri: ur,
     class: cl
   };
-  if (obj!==null) {
-    eval('d.'+_lh.keys(obj)[0]+'=obj.'+_lh.keys(obj)[0]+';');
+  if (obj !== null) {
+    eval('d.' + _lh.keys(obj)[0] + '=obj.' + _lh.keys(obj)[0] + ';');
   }
   return { data: d, position: p, group: 'nodes', removed: false, selected: false, selectable: true, locked: false, grabbable: true, classes: '' };
 }
 
 function mapToEdge(o, np, src, trg, pr, lb) {
-  let p = { x: Math.random()*100, y: Math.random()*100 };
+  let p = { x: Math.random() * 100, y: Math.random() * 100 };
   let _lb = "";
-  eval('if(o.' + lb + ' && isObject(o.'+lb+')) _lb=o.' + lb + '.value; else _lb=o.' + lb);
+  eval('if(o.' + lb + ' && isObject(o.' + lb + ')) _lb=o.' + lb + '.value; else _lb=o.' + lb);
   let _pr = "";
-  eval('if(o.' + pr + ' && isObject(o.'+pr+')) _pr=o.' + pr + '.value; else _pr=o.' + pr);
+  eval('if(o.' + pr + ' && isObject(o.' + pr + ')) _pr=o.' + pr + '.value; else _pr=o.' + pr);
   let _class = "";
   eval('if(o.type && isObject(o.type)) _class=o.type.value; else _class=_lb');
 
@@ -244,7 +244,7 @@ function step1() {
         return mapToEdge(o, nPropr++, src, trg, 'objprop', 'prop_label');
       });
 
-      gComp = [[...sorted_vnt,...vcc], vpt];
+      gComp = [[...sorted_vnt, ...vcc], vpt];
 
       step2();
       //writeToFile(gComp);
@@ -259,7 +259,46 @@ function step1() {
         });
 }
 
-//costruisce i nodi per le classi anonime in union
+//preparo i dati ritornati dalla quey delle union in modo da ottenere le union con l'elenco dei corrispettivi nodi blank e classi
+//questa è l'anagrafica delle union che deve essere usata anche dopo negli altri passi
+function step2_1(data) {
+
+  //raggruppo i risultati per blank node : blank --> lista classi
+  let vgb = _lh.groupBy(data.results.bindings, 'blank.value');
+  //console.dir(vgb,{depth:4})
+
+  //riduco vgb tenendo il blank node e l'uri delle classi
+  let v = [];
+  _lh.forIn(vgb, function (value, key) {
+    v.push({ blank: key, classes: _lh.map(value, 'class.value') });
+  });
+
+  //in u metto insieme i nodi blank che hanno le stesse classi in union
+  let u = [];
+  v.forEach((o1) => {
+    //se in u[] non ci sono unioni di classi con la stessa lista di classi di o1 ne creo una nuova
+    let uv = _lh.filter(u, (o2) => {
+      if (o2.classes.length > o1.classes.length)
+        return (_lh.difference(o2.classes, o1.classes).length === 0);
+      return (_lh.difference(o1.classes, o2.classes).length === 0);
+    });
+    if (uv.length === 0) {
+      let new_u = { blank: [o1.blank], classes: o1.classes, union: "u" + u.length };
+      u.push(new_u);
+    }
+    else {
+      //altrimenti aggiungo il nodo blank corrente all'unione
+      let i = _lh.findIndex(u, function (o) { return o.union === uv[0].union });
+      u[i].blank.push(o1.blank);
+    }
+
+  });
+
+  return u;
+
+}
+
+//costruisce i nodi per le classi anonime in union e li collega alle classi unite
 function step2() {
   //prendo la query per le unions
   let query = objQuery.query.find(x => x.name === 'Unions').value.join("\n");
@@ -271,48 +310,49 @@ function step2() {
       console.log("QUERY Unions OK");
       console.log("resultSet rows: " + data.results.bindings.length);
 
-      //raggruppo i risultati per blank node : blank --> lista classi
-      let vgb = _lh.groupBy(data.results.bindings, 'blank.value');
-      //console.dir(vgb,{depth:4})
-
-      //riduco vgb tenendo il blank node e l'uri delle classi
-      let v = [];
-      _lh.forIn(vgb, function (value, key) {
-        v.push({ blank: key, classes: _lh.map(value, 'class.value') });
-      });
-     
-      //in u metto insieme i nodi blank che hanno le stesse classi in union
-      let u = [];
-      v.forEach((o1) => {
-        //se in u[] non ci sono unioni di classi con la stessa lista di classi di o1 ne creo una nuova
-        let uv = _lh.filter(u, (o2) => {
-          if (o2.classes.length > o1.classes.length)
-            return (_lh.difference(o2.classes, o1.classes).length === 0);
-          return (_lh.difference(o1.classes, o2.classes).length === 0);
-        });
-        if (uv.length === 0) {
-          let new_u = { blank: [o1.blank], classes: o1.classes, union: "u" + u.length };
-          u.push(new_u);
-        }
-        else {
-          //altrimenti aggiungo il nodo blank corrente all'unione
-          let i = _lh.findIndex(u, function (o) { return o.union === uv[0].union });
-          u[i].blank.push(o1.blank);
-        }
-
-      });
+      let u = step2_1(data);
+      //salvo l'anagrafica delle union per i prossimi step
+      gComp[2] = u;
 
       //calcolo il massimo tra gli ID dei nodi
-      let max = _lh.maxBy(gComp[0], (o) => {return parseInt(o.data.id.substring(1)) });
+      let max = _lh.maxBy(gComp[0], (o) => { return parseInt(o.data.id.substring(1)) });
+
       let nProp = parseInt((max.data.id).substring(1));
       //creo i nodi relativi alla union
-      let vcu = _lh.map(u, (o) => mapToStaticNode(nProp++, ''+o.classes.toString(), o.union, 'union', {blank:o.blank})); 
-      
+      let vcu = _lh.map(u, (o) => mapToStaticNode(nProp++, '' + o.classes.toString(), o.union, 'union', { blank: o.blank }));
+
       //aggiungo i nuovi nodi
-      gComp[0] = [...gComp[0],...vcu];
-      //passo la lista delle union agli step successivi <-- NO PERCHE' ALTRIMENTI LE QUERY SUCCESSIVE NON SERVONO A NIENTE
-      gComp[2] = u;
-      
+      gComp[0] = [...gComp[0], ...vcu];
+
+      //calcolo il massimo tra gli ID degli archi
+      max = _lh.maxBy(gComp[1], (o) => { return parseInt(o.data.id.substring(1)) });
+      let nt = (max.data.id).substring(1);
+      let vee = [];
+      u.forEach((nn) => {
+
+        //scorro le classi dell'unione
+        for (let i = 0; i < nn.classes.length; i++) {
+          //ricavo l'id
+          bid = gComp[0].find(x => x.data.uri === nn.classes[i]);
+          if (bid) {
+            bid = bid.data.id;
+            //console.log("bid:"+bid);
+
+            //ricavo l'id (attenzione assumo che la label del nodo dell'unione abbia il nome dell'union 'nx')
+            uid = gComp[0].find(x => x.data.label === nn.union);
+            if (uid) {
+              uid = uid.data.id;
+              //creo un arco dalla classe al nodo dell'unione
+              //console.log("uid:"+uid);
+              vee.push(mapToEdge({ label: 'union', property: 'owl:unionOf' }, nt++, bid, uid, 'property', 'label'));
+            }
+          }
+        }
+      });
+
+      //aggiungo i nuovi archi
+      gComp[1] = [...gComp[1], ...vee];
+
       //scrivo su disco il grafo
       //writeToFile(gComp);
       step3();
@@ -327,10 +367,55 @@ function step2() {
         });
 }
 
+function step3_1(data) {
+
+  let u = step2_1(data);
+
+  //calcolo il massimo tra gli ID degli archi
+  max = _lh.maxBy(gComp[1], (o) => { return parseInt(o.data.id.substring(1)) });
+  nt = (max.data.id).substring(1);
+
+  u.forEach((nn) => {
+
+    //scorro i nodi _blank che rappresentano l'unione
+    for (let i = 0; i < nn.blank.length; i++) {
+      //ricavo l'id
+      bid = gComp[0].find(x => x.data.uri === nn.blank[i]);
+      if (bid) {
+        bid = bid.data.id;
+        //elimino il nodo
+        r = _lh.remove(gComp[0], function (n) { return n.data.id === bid; });
+
+        //ricavo l'id (attenzione assumo che la label del nodo dell'unione abbia il nome dell'union 'nx')
+        uid = gComp[0].find(x => x.data.label === nn.union);
+        if (uid) {
+          uid = uid.data.id;
+
+          //trovo tutti gli archi che hanno source in quel nodo
+          var se = _lh.keys(_lh.pickBy(gComp[1], function (o) { return (o.data.source === bid) }));
+          //li sposto sull'unione
+          se.forEach((n) => { gComp[1][n].data.source = uid });
+
+          //trovo tutti gli archi che hanno target in quel nodo
+          var te = _lh.keys(_lh.pickBy(gComp[1], function (o) { return (o.data.target === bid) }));
+          //li sposto sull'unione
+          te.forEach((n) => { gComp[1][n].data.target = uid });
+        }
+
+      }
+    }
+
+
+  });
+
+
+
+}
+
 //modifica gli archi per le property che hanno classi anonime come domain
 function step3() {
   //prendo la query per le union che sono domain di propery
-  query = objQuery.query.find(x => x.name === 'DomainUnions').value.join("\n");
+  query = objQuery.query.find(x => x.name === 'DomainRangeUnions').value.join("\n");
   sources = objQuery.sources;
   logQuery(query, sources);
   //eseguo la query
@@ -339,301 +424,7 @@ function step3() {
       console.log("QUERY DomainUnions OK");
       console.log("resultSet rows: " + data.results.bindings.length);
 
-      //TODO:verificare se vengono creati archi doppi
-      //per ognuna delle unioni devo creare un arco tra le classi coinvolte ed eliminare i _blank
-      let ee = [];
-
-      // TODO: NON STO USANDO IL RISULTATO DELLA QUERY CORRENTE!!! MA DI QUELLA PRIMA
-      let u = gComp[2];
-
-      //calcolo il massimo tra gli ID degli archi
-      max = _lh.maxBy(gComp[1], (o) => {return parseInt(o.data.id.substring(1)) });
-      nt = (max.data.id).substring(1);
-      u.forEach( (nn) => {
-
-          //scorro le classi dell'unione
-          for (let i=0; i<nn.classes.length; i++) {
-            //ricavo l'id
-            bid = gComp[0].find(x => x.data.uri === nn.classes[i]);
-            if (bid) {
-                bid=bid.data.id;
-                //console.log("bid:"+bid);
-                    
-                //ricavo l'id (attenzione assumo che la label del nodo dell'unione abbia il nome dell'union 'nx')
-                uid = gComp[0].find(x => x.data.label === nn.union);
-                if (uid) {
-                    uid=uid.data.id;
-                    //creo un arco dalla classe al nodo dell'unione
-                    //console.log("uid:"+uid);
-                    ee.push(mapToEdge({label:'union', property:'owl:unionOf'}, nt++, bid, uid, 'property','label'));
-                }
-            }
-          }
-
-          //scorro i nodi _blank che rappresentano l'unione
-          for (let i=0; i<nn.blank.length; i++) {
-            //ricavo l'id
-            bid = gComp[0].find(x => x.data.uri === nn.blank[i]);
-            if (bid) {
-              bid = bid.data.id;
-              //elimino il nodo
-              r = _lh.remove(gComp[0], function(n) { return n.data.id === bid; });
-            
-              //ricavo l'id (attenzione assumo che la label del nodo dell'unione abbia il nome dell'union 'nx')
-              uid = gComp[0].find(x => x.data.label === nn.union);
-              if (uid) {
-                uid=uid.data.id;
-
-                //trovo tutti gli archi che hanno source in quel nodo
-                var se = _lh.keys(_lh.pickBy(gComp[1], function (o) { return (o.data.source === bid) }));
-                //li sposto sull'unione
-                se.forEach((n) => { gComp[1][n].data.source=uid});
-
-                //trovo tutti gli archi che hanno target in quel nodo
-                var te  = _lh.keys(_lh.pickBy(gComp[1], function (o) { return (o.data.target === bid) }));
-                //li sposto sull'unione
-                te.forEach((n) => { gComp[1][n].data.target=uid});
-              }
-
-            }
-          }
-          
-
-        });
-
-      //aggiungo i nuovi archi
-      gComp[1] = [...gComp[1],...ee];
-
-      //scrivo su disco il grafo
-      //writeToFile(gComp);
-      step4();
-
-    }).catch(
-      (error) => {
-        console.log("QUERY Unions KO");
-        console.error(error);
-      }).finally(
-        (data) => {
-
-        });
-}
-
-//modifica gli archi per le property che hanno classi anonime come range
-function step4() {
-  //prendo la query per le union che sono range di propery
-  query = objQuery.query.find(x => x.name === 'RangeUnions').value.join("\n");
-  sources = objQuery.sources;
-  logQuery(query, sources);
-  //eseguo la query
-  executeQuery(query, sources).then(
-    (data) => {
-      console.log("QUERY RangeUnions OK");
-      console.log("resultSet rows: " + data.results.bindings.length);
-
-      //TODO:verificare se vengono creati archi doppi
-      //per ognuna delle unioni devo creare un arco tra le classi coinvolte ed eliminare i _blank
-      let ee = [];
-      let u = gComp[2];
-      //calcolo il massimo tra gli ID degli archi
-      max = _lh.maxBy(gComp[1], (o) => {return parseInt(o.data.id.substring(1)) });
-      nt = (max.data.id).substring(1);
-      u.forEach( (nn) => {
-
-          //scorro le classi dell'unione
-          for (let i=0; i<nn.classes.length; i++) {
-            //ricavo l'id
-            bid = gComp[0].find(x => x.data.uri === nn.classes[i]);
-            if (bid) {
-                bid=bid.data.id;
-                //console.log("bid:"+bid);
-                    
-                //ricavo l'id (attenzione assumo che la label del nodo dell'unione abbia il nome dell'union 'nx')
-                uid = gComp[0].find(x => x.data.label === nn.union);
-                if (uid) {
-                    uid=uid.data.id;
-                    //creo un arco dalla classe al nodo dell'unione
-                    //console.log("uid:"+uid);
-                    ee.push(mapToEdge({label:'union', property:'owl:unionOf'}, nt++, bid, uid, 'property','label'));
-                }
-            }
-          }
-
-          //scorro i nodi _blank che rappresentano l'unione
-          for (let i=0; i<nn.blank.length; i++) {
-            //ricavo l'id
-            bid = gComp[0].find(x => x.data.uri === nn.blank[i]);
-            if (bid) {
-              bid = bid.data.id;
-              //elimino il nodo
-              r = _lh.remove(gComp[0], function(n) { return n.data.id === bid; });
-            
-              //ricavo l'id (attenzione assumo che la label del nodo dell'unione abbia il nome dell'union 'nx')
-              uid = gComp[0].find(x => x.data.label === nn.union);
-              if (uid) {
-                uid=uid.data.id;
-
-                //trovo tutti gli archi che hanno source in quel nodo
-                var se = _lh.keys(_lh.pickBy(gComp[1], function (o) { return (o.data.source === bid) }));
-                //li sposto sull'unione
-                se.forEach((n) => { gComp[1][n].data.source=uid});
-
-                //trovo tutti gli archi che hanno target in quel nodo
-                var te  = _lh.keys(_lh.pickBy(gComp[1], function (o) { return (o.data.target === bid) }));
-                //li sposto sull'unione
-                te.forEach((n) => { gComp[1][n].data.target=uid});
-              }
-
-            }
-          }
-          
-
-        });
-
-      //aggiungo i nuovi archi
-      gComp[1] = [...gComp[1],...ee];
-
-      //scrivo su disco il grafo
-      writeToFile(gComp);
-
-    }).catch(
-      (error) => {
-        console.log("QUERY Unions KO");
-        console.error(error);
-      }).finally(
-        (data) => {
-
-        });
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-function step_2() {
-  //prendo la query per le classi e le object property
-  query = objQuery.query.find(x => x.name === 'DomainUnions').value.join("\n");
-  sources = objQuery.sources;
-  logQuery(query, sources);
-  //eseguo la query
-  executeQuery(query, sources).then(
-    (data) => {
-      console.log("QUERY Unions OK");
-      console.log("resultSet rows: " + data.results.bindings.length);
-
-      //console.dir(data,{depth:4});
-      gb = _lh.groupBy(data.results.bindings, 'blank.value');
-      v = [];
-      _lh.forIn(gb, function (value, key) {
-        v.push({ blank: key, classes: _lh.map(value, 'class.value') });
-      });
-      //console.dir(v, {depth:4});
-
-      //console.dir(gb, {depth:4});
-      u = [];
-      v.forEach((o1) => {
-        //se in u[] non ci sono unioni di classi con la stessa lista di classi di o1 ne creo una nuova
-        uv = _lh.filter(u, (o2) => {
-          if (o2.classes.length > o1.classes.length)
-            return (_lh.difference(o2.classes, o1.classes).length === 0);
-          return (_lh.difference(o1.classes, o2.classes).length === 0);
-        });
-        if (uv.length === 0) {
-          new_u = { blank: [o1.blank], classes: o1.classes, union: "u" + u.length };
-          u.push(new_u);
-        }
-        else {
-          //altrimenti aggiungo il nodo blank corrente all'unione
-          var i = _lh.findIndex(u, function (o) { return o.union === uv[0].union });
-          u[i].blank.push(o1.blank);
-        }
-
-      });
-
-      console.log(u);
-      //calcolo il massimo tra gli ID dei nodi
-      max = _lh.maxBy(gComp[0], (o) => {return parseInt(o.data.id.substring(1)) });
-      nc = (max.data.id).substring(1);
-      //creo i nodi relativi alla union
-      cu = _lh.map(u, (o) => mapToStaticNode(nc++, ''+o.classes.toString(), o.union, 'union', {blank:o.blank})); 
-
-      console.log(cu);
-
-      //TODO:verificare se vengono creati archi doppi
-      //per ognuna delle unioni devo creare un arco tra le classi coinvolte ed eliminare i _blank
-      ee = [];
-      //calcolo il massimo tra gli ID degli archi
-      max = _lh.maxBy(gComp[1], (o) => {return parseInt(o.data.id.substring(1)) });
-      nt = (max.data.id).substring(1);
-      u.forEach( (nn) => {
-
-          //scorro le classi dell'unione
-          for (let i=0; i<nn.classes.length; i++) {
-            //ricavo l'id
-            bid = gComp[0].find(x => x.data.uri === nn.classes[i]);
-            if (bid) {
-                bid=bid.data.id;
-                //console.log("bid:"+bid);
-                    
-                //ricavo l'id (attenzione assumo che la label del nodo dell'unione abbia il nome dell'union 'nx')
-                uid = cu.find(x => x.data.label === nn.union);
-                if (uid) {
-                    uid=uid.data.id;
-                    //creo un arco dalla classe al nodo dell'unione
-                    //console.log("uid:"+uid);
-                    ee.push(mapToEdge({label:'union', property:'owl:unionOf'}, nt++, bid, uid, 'property','label'));
-                }
-            }
-          }
-
-          //scorro i nodi _blank che rappresentano l'unione
-          for (let i=0; i<nn.blank.length; i++) {
-            //ricavo l'id
-            bid = gComp[0].find(x => x.data.uri === nn.blank[i]);
-            if (bid) {
-              bid = bid.data.id;
-              //elimino il nodo
-              r = _lh.remove(gComp[0], function(n) { return n.data.id === bid; });
-            
-              //ricavo l'id (attenzione assumo che la label del nodo dell'unione abbia il nome dell'union 'nx')
-              uid = cu.find(x => x.data.label === nn.union);
-              if (uid) {
-                uid=uid.data.id;
-
-                //trovo tutti gli archi che hanno source in quel nodo
-                var se = _lh.keys(_lh.pickBy(gComp[1], function (o) { return (o.data.source === bid) }));
-                //li sposto sull'unione
-                se.forEach((n) => { gComp[1][n].data.source=uid});
-
-                //trovo tutti gli archi che hanno target in quel nodo
-                var te  = _lh.keys(_lh.pickBy(gComp[1], function (o) { return (o.data.target === bid) }));
-                //li sposto sull'unione
-                te.forEach((n) => { gComp[1][n].data.target=uid});
-              }
-
-            }
-          }
-          
-
-        });
-
-      //console.dir(ee,{depth:4});
-
-      //aggiungo i nuovi nodi
-      gComp[0] = [...gComp[0],...cu];
-      //aggiungo i nuovi archi
-      gComp[1] = [...gComp[1],...ee];
-
+      step3_1(data);
 
       //scrivo su disco il grafo
       writeToFile(gComp);

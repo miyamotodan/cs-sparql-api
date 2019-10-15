@@ -7,6 +7,15 @@
   ],
   "query": [
     {
+      "name": "Classes",
+      "value": [
+        "SELECT distinct ?class ?label WHERE { ",
+        "?class a owl:Class. ",
+        "OPTIONAL { ?class rdfs:label ?label } ",
+        "}"
+      ]
+    },
+    {
       "name": "ObjectProprties",
       "value": [
         "select distinct ?class_a ?objprop ?class_b ?class_a_label ?prop_label ?class_b_label ?type ",
@@ -35,20 +44,11 @@
       ]
     },
     {
-      "name": "DomainUnions",
+      "name": "DomainRangeUnions",
       "value": [
         "SELECT distinct ?prop ?class ?blank WHERE { ",
-        "?prop rdfs:domain ?blank. ",
-        "?blank owl:unionOf ?y. ",
-        "?y rdf:rest*/rdf:first ?class ",
-        "}"
-      ]
-    },
-    {
-      "name": "RangeUnions",
-      "value": [
-        "SELECT distinct ?prop ?class ?blank WHERE { ",
-        "?prop rdfs:range ?blank. ",
+        "OPTIONAL {?prop rdfs:domain ?blank.} ",
+        "OPTIONAL {?prop rdfs:range ?blank.} ",
         "?blank owl:unionOf ?y. ",
         "?y rdf:rest*/rdf:first ?class ",
         "}"
